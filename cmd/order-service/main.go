@@ -23,12 +23,11 @@ const (
 )
 
 func main() {
-
-	cfg := config.MustLoad()
-
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	cfg := config.MustLoad()
 
 	logger := setupLogger(cfg.Env)
 
@@ -48,7 +47,7 @@ func main() {
 	handler.RegisterRoutes(mux, orderHandler)
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + strconv.Itoa(cfg.Port),
 		Handler: mux,
 		// ReadTimeout — максимальное время на чтение всего запроса (заголовки + тело)
 		ReadTimeout: 10 * time.Second,
