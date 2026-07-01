@@ -1,0 +1,8 @@
+name: Deploy App
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag to deploy"
+        required: true
