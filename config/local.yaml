@@ -1,8 +1,8 @@
 env: "local" #local, stg, prod
 http_server:
-  address: "localhost:8082"
-  timeout: 4s
-  idle_timeout: 60s
+  read_timeout: "10"
+  write_timeout: "10"
+  idle_timeout: "60"
   user: "myuser"
   password: "mypass"
 migrations_path: "./migrations"

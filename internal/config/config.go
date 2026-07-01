@@ -10,6 +10,13 @@ import (
 type Config struct {
 	Env            string     `yaml:"env" env-default:"local"`
 	Port           int        `yaml:"port" env-default:"8082"`
+	HttpServer     HttpServer `yaml:"http_server"`
+}
+
+type HttpServer struct {
+	ReadTimeout int `yaml:"read_timeout" env-default:"10"`
+	WriteTimeout int `yaml:"write_timeout" env-default:"10"`
+	IdleTimeout int `yaml:"idle_timeout" env-default:"60"`
 }
 
 func MustLoad() *Config {

@@ -50,11 +50,11 @@ func main() {
 		Addr:    ":" + strconv.Itoa(cfg.Port),
 		Handler: mux,
 		// ReadTimeout — максимальное время на чтение всего запроса (заголовки + тело)
-		ReadTimeout: 10 * time.Second,
+		ReadTimeout: cfg.HttpServer.ReadTimeout * time.Second,
 		// WriteTimeout — максимальное время на запись ответа клиенту
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: cfg.HttpServer.WriteTimeout * time.Second,
 		// IdleTimeout — максимальное время ожидания следующего запроса при keep-alive соединении
-		IdleTimeout: 60 * time.Second,
+		IdleTimeout: cfg.HttpServer.IdleTimeout * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {
 		logger.Error("server stopped", slog.String("error", err.Error()))
