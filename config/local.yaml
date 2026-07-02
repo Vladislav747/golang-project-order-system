@@ -1,8 +1,8 @@
 env: "local" #local, stg, prod
 http_server:
-  read_timeout: "10"
-  write_timeout: "10"
-  idle_timeout: "60"
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 60s
   user: "myuser"
   password: "mypass"
 migrations_path: "./migrations"

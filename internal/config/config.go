@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"os"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -14,9 +15,9 @@ type Config struct {
 }
 
 type HttpServer struct {
-	ReadTimeout int `yaml:"read_timeout" env-default:"10"`
-	WriteTimeout int `yaml:"write_timeout" env-default:"10"`
-	IdleTimeout int `yaml:"idle_timeout" env-default:"60"`
+	ReadTimeout time.Duration `yaml:"read_timeout" env-default:"10"`
+	WriteTimeout time.Duration `yaml:"write_timeout" env-default:"10"`
+	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60"`
 }
 
 func MustLoad() *Config {

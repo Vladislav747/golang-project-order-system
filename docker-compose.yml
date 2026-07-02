@@ -3,14 +3,17 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "3000:3000"
-    volumes:
-      - .:/go/src/app
+      - "8082:8082"
     env_file:
       - .env
+    environment:
+      CONFIG_PATH: /app/config/prod.yaml
+      DATABASE_URL: postgres://orders:orders@postgres:5432/orders?sslmode=disable
     depends_on:
-      - zookeeper
-      - postgres
+      postgres:
+        condition: service_healthy
+      broker:
+        condition: service_started
 
   postgres:
     image: postgres:16-alpine

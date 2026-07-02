@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 	"github.com/joho/godotenv"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
@@ -23,8 +22,8 @@ const (
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Fatal("Error loading .env file: ", err)
 	}
 
 	cfg := config.MustLoad()
@@ -50,11 +49,11 @@ func main() {
 		Addr:    ":" + strconv.Itoa(cfg.Port),
 		Handler: mux,
 		// ReadTimeout — максимальное время на чтение всего запроса (заголовки + тело)
-		ReadTimeout: cfg.HttpServer.ReadTimeout * time.Second,
+		ReadTimeout:  cfg.HttpServer.ReadTimeout,
 		// WriteTimeout — максимальное время на запись ответа клиенту
-		WriteTimeout: cfg.HttpServer.WriteTimeout * time.Second,
+		WriteTimeout: cfg.HttpServer.WriteTimeout,
 		// IdleTimeout — максимальное время ожидания следующего запроса при keep-alive соединении
-		IdleTimeout: cfg.HttpServer.IdleTimeout * time.Second,
+		IdleTimeout: cfg.HttpServer.IdleTimeout,
 	}
 	if err := server.ListenAndServe(); err != nil {
 		logger.Error("server stopped", slog.String("error", err.Error()))
