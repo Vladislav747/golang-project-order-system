@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 CREATE TABLE IF NOT EXISTS order_events (
-    id          BIGSERIAL   PRIMARY KEY,
+    id          UUID   PRIMARY KEY,
     order_id    UUID        NOT NULL REFERENCES orders (id),
     event_type  VARCHAR(20) NOT NULL CHECK (event_type IN ('created', 'updated', 'viewed', 'deleted')),
     source      VARCHAR(20) NOT NULL CHECK (source IN ('http_sync', 'kafka')),

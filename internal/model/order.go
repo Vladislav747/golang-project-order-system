@@ -3,11 +3,13 @@ package model
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Order struct {
-	ID int64 `json:"id"`
-	CustomerID int64 `json:"customer_id"`
+	ID uuid.UUID `json:"id"`
+	CustomerID uuid.UUID `json:"customer_id"`
 	Status string `json:"status"`
 	TotalAmount int64 `json:"total_amount"`
 	Currency string `json:"currency"`

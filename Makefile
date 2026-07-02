@@ -12,3 +12,6 @@ local-run:
 
 rebuild-go-app-docker:
 	docker compose up --build go-app
+
+docker-compose-exec-postgres-psql:
+	docker compose exec postgres psql -U orders -d orders -c "\dt"

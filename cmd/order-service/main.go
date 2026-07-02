@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"github.com/joho/godotenv"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"context"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
@@ -35,7 +37,31 @@ func main() {
 		slog.String("port", strconv.Itoa(cfg.Port)),
 	)
 
-	repository := repository.NewRepository()
+	databaseUrl := os.Getenv("DATABASE_URL")
+	if databaseUrl == "" {
+		logger.Error("DATABASE_URL is not set")
+		os.Exit(1)
+	}
+
+	pool, err := pgxpool.New(context.Background(), databaseUrl)
+	if err != nil {
+		logger.Error("failed to create pool", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	if err := pool.Ping(context.Background()); err != nil {
+		logger.Error("failed to ping pool", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	//@TODO: Remove this after testing
+	if err == nil {
+		logger.Info("connected to database")
+	}
+
+	defer pool.Close()
+
+	repository := repository.NewRepository(pool)
 
 	service := service.NewService(repository)
 

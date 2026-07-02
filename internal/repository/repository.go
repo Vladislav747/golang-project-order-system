@@ -2,16 +2,17 @@ package repository
 
 import (
 	"errors"
-	
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
 type repository struct {
-
+	pool *pgxpool.Pool
 }
 
-func NewRepository() *repository {
-	return &repository{}
+func NewRepository(pool *pgxpool.Pool) *repository {
+	return &repository{pool: pool}
 }
 
 func (r *repository) CreateOrder(order model.Order) error {
