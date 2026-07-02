@@ -1,15 +1,18 @@
 package handler
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"encoding/json"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
 type Service interface {
-	CreateOrder() error
-	GetOrders() []model.Order
+	CreateOrder(ctx context.Context, order model.Order) error
+	GetOrders(ctx context.Context) ([]model.Order, error)
 	GetOrder(id int64) (model.Order, error)
 	UpdateOrder(id int64) error
 	DeleteOrder(id int64) error
@@ -17,20 +20,47 @@ type Service interface {
 
 type handler struct {
 	service Service
+	logger *slog.Logger
+	ctx context.Context
 }
 
-func NewHandler(service Service) *handler {
-	return &handler{service: service}
+func NewHandler( ctx context.Context, service Service, logger *slog.Logger) *handler {
+	return &handler{service: service, logger: logger, ctx: ctx}
 }
 
 func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	_ = h.service.CreateOrder()
-	fmt.Println("CreateOrder")
+	var input model.Order
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "некорректный JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := h.service.CreateOrder(r.Context(), input)
+	if err != nil {
+		h.logger.Error("failed to create order", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(input.ID.String()))
 }
 
 func (h *handler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	_ = h.service.GetOrders()
-	fmt.Println("GetOrders")
+	res, err := h.service.GetOrders(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	orders, err := json.Marshal(res)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(orders)
 }
 
 func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {

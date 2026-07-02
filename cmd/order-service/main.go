@@ -61,11 +61,13 @@ func main() {
 
 	defer pool.Close()
 
+	ctx := context.Background()
+
 	repository := repository.NewRepository(pool)
 
-	service := service.NewService(repository)
+	service := service.NewService(ctx, repository, pool)
 
-	orderHandler := handler.NewHandler(service)
+	orderHandler := handler.NewHandler(ctx, service, logger)
 
 	// Регистрируем маршруты
 	mux := http.NewServeMux()

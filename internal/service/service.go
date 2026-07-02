@@ -1,21 +1,26 @@
 package service
 
 import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
 
 type Service interface {
-	CreateOrder() error
-	GetOrders() []model.Order
+	CreateOrder(ctx context.Context, order model.Order) error
+	GetOrders(ctx context.Context) ([]model.Order, error)
 	GetOrder() (model.Order, error)
 	UpdateOrder() error
 	DeleteOrder() error
 }
 
 type Repository interface {
-	CreateOrder(order model.Order) error
-	GetOrders() []model.Order
+	CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error
+	GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, error)
 	GetOrder(id int64) (model.Order, error)
 	UpdateOrder(order model.Order) error
 	DeleteOrder(id int64) error
@@ -24,20 +29,46 @@ type Repository interface {
 
 type service struct {
 	repository Repository
+	pool *pgxpool.Pool
+	ctx context.Context
 }
 
-func NewService(repository Repository) *service {
+func NewService(ctx context.Context, repository Repository, pool *pgxpool.Pool) *service {
 	return &service{
 		repository: repository,
+		pool: pool,
+		ctx: ctx,
 	}
 }
 
-func (s *service) CreateOrder() error {
-	return s.repository.CreateOrder(model.Order{})
+func (s *service) CreateOrder(ctx context.Context, order model.Order) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = s.repository.CreateOrder(ctx, tx, order)
+	if err != nil {
+		return err
+	}
+	tx.Commit(ctx)
+	return nil
 }
 
-func (s *service) GetOrders() []model.Order {
-	return s.repository.GetOrders()
+func (s *service) GetOrders(ctx context.Context) ([]model.Order, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	res, err := s.repository.GetOrders(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	tx.Commit(ctx)
+	return res, nil
 }
 
 func (s *service) GetOrder(id int64) (model.Order, error) {
