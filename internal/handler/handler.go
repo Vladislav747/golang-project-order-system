@@ -13,7 +13,7 @@ import (
 type Service interface {
 	CreateOrder(ctx context.Context, order model.Order) error
 	GetOrders(ctx context.Context) ([]model.Order, error)
-	GetOrder(id int64) (model.Order, error)
+	GetOrder(ctx context.Context, id string) (model.Order, error)
 	UpdateOrder(id int64) error
 	DeleteOrder(id int64) error
 }
@@ -32,6 +32,7 @@ func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.logger.Error("failed to decode request body", "error", err)
 		http.Error(w, "некорректный JSON", http.StatusBadRequest)
 		return
 	}
@@ -64,12 +65,26 @@ func (h *handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
-	_, err := h.service.GetOrder(1)
+	idParam := r.PathValue("id")
+	if idParam == "" {
+		h.logger.Error("id is required")
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+	res, err := h.service.GetOrder(r.Context(), idParam)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("GetOrder")
+
+	order, err := json.Marshal(res)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(order)
 }
 
 func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {

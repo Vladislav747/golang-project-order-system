@@ -75,8 +75,34 @@ func (r *repository) GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, e
 
 }
 
-func (r *repository) GetOrder(id int64) (model.Order, error) {
-	return model.Order{}, errors.New("not implemented")
+func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.Order, error) {
+	sqlQuery := `
+        SELECT id, customer_id, status, total_amount, currency, items,
+               created_at, updated_at, deleted_at
+        FROM orders
+        WHERE id = $1 AND deleted_at IS NULL
+    `
+
+	var order model.Order
+	var deletedAt *time.Time
+    err := tx.QueryRow(ctx, sqlQuery, id).Scan(
+        &order.ID,
+        &order.CustomerID,
+        &order.Status,
+        &order.TotalAmount,
+        &order.Currency,
+        &order.Items,
+        &order.CreatedAt,
+        &order.UpdatedAt,
+        &deletedAt,
+    )
+    if err != nil {
+        return model.Order{}, err
+    }
+    if deletedAt != nil {
+        order.DeletedAt = *deletedAt
+    }
+    return order, nil
 }
 
 func (r *repository) UpdateOrder(order model.Order) error {
