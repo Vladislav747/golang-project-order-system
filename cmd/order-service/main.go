@@ -82,6 +82,8 @@ func main() {
 		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
 		os.Getenv("KAFKA_TOPIC_ORDERS"),
 		os.Getenv("KAFKA_CONSUMER_GROUP"),
+		service,
+		logger,
 	)
 
 	appCtx, cancel := context.WithCancel(context.Background())

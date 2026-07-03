@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"encoding/json"
+	"github.com/google/uuid"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
@@ -35,6 +36,11 @@ func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to decode request body", "error", err)
 		http.Error(w, "некорректный JSON", http.StatusBadRequest)
 		return
+	}
+
+	if input.ID == uuid.Nil {
+		ID := uuid.New()
+		input.ID = ID
 	}
 
 	err := h.service.CreateOrder(r.Context(), input)
@@ -133,6 +139,11 @@ func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to decode request body", "error", err)
 		http.Error(w, "некорректный JSON", http.StatusBadRequest)
 		return
+	}
+
+	if input.ID == uuid.Nil {
+		ID := uuid.New()
+		input.ID = ID
 	}
 
 	err := h.service.CreateOrderKafka(r.Context(), input)

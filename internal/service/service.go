@@ -111,6 +111,18 @@ func (s *service) DeleteOrder(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *service) HandleCreateOrder(ctx context.Context, msg kafka.CreateOrderMessage) error {
+	order := model.Order{
+		ID:          msg.OrderID,
+		CustomerID:  msg.CustomerID,
+		Status:      msg.Status,
+		TotalAmount: msg.TotalAmount,
+		Currency:    msg.Currency,
+		Items:       msg.Items,
+	}
+	return s.CreateOrderFromKafka(ctx, order)
+}
+
 func (s *service) CreateOrderKafka(ctx context.Context, order model.Order) error {
 	message := kafka.CreateOrderMessage{
 		OrderID: order.ID,
@@ -122,4 +134,18 @@ func (s *service) CreateOrderKafka(ctx context.Context, order model.Order) error
 	}
 	s.logger.Info("sending message to kafka", "message", message)
 	return s.producer.SendMessage(message)
+}
+
+func (s *service) CreateOrderFromKafka(ctx context.Context, order model.Order) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if err := s.repository.CreateOrder(ctx, tx, order); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
