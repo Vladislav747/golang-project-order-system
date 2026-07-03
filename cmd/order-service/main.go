@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"os/signal"
+	"syscall"
 	"github.com/joho/godotenv"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"context"
@@ -83,10 +85,17 @@ func main() {
 		// IdleTimeout — максимальное время ожидания следующего запроса при keep-alive соединении
 		IdleTimeout: cfg.HttpServer.IdleTimeout,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		logger.Error("server stopped", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
+	// Запускаем сервер в отдельной горутине
+	go func() {
+		logger.Info("server started")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("server error", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+	}()
+
+	// Запускаем graceful shutdown
+	gracefulShutdown(server, pool, logger, cfg)
 }
 
 func setupLogger(env string) *slog.Logger {
@@ -110,4 +119,30 @@ func setupLogger(env string) *slog.Logger {
 	}
 
 	return log
+}
+
+func gracefulShutdown(server *http.Server, pool *pgxpool.Pool, logger *slog.Logger, cfg *config.Config) {
+	// Ждем сигналы прерывания
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// Ждем сигналы прерывания
+	<-ctx.Done()
+
+	// Останавливаем сервер
+	logger.Info("shutting down server")
+
+	// Устанавливаем timeout для graceful shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HttpServer.GracefulShutdownTimeout)
+    defer cancel()
+
+	// Останавливаем сервер
+	if err := server.Shutdown(shutdownCtx); err != nil {
+        logger.Error("server shutdown failed", slog.String("error", err.Error()))
+    }
+
+	// Закрываем пул соединений
+	pool.Close()
+
+	logger.Info("server stopped")
 }

@@ -18,6 +18,7 @@ type HttpServer struct {
 	ReadTimeout time.Duration `yaml:"read_timeout" env-default:"10"`
 	WriteTimeout time.Duration `yaml:"write_timeout" env-default:"10"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60"`
+	GracefulShutdownTimeout time.Duration `yaml:"graceful_shutdown_timeout" env-default:"10"`
 }
 
 func MustLoad() *Config {
