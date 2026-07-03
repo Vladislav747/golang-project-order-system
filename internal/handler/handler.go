@@ -14,7 +14,7 @@ type Service interface {
 	GetOrders(ctx context.Context) ([]model.Order, error)
 	GetOrder(ctx context.Context, id string) (model.Order, error)
 	UpdateOrder(ctx context.Context, order model.Order) error
-	DeleteOrder(id int64) error
+	DeleteOrder(ctx context.Context, id string) error
 }
 
 type handler struct {
@@ -109,6 +109,18 @@ func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
-	_ = h.service.DeleteOrder(1)
-	h.logger.Info("DeleteOrder")
+	idParam := r.PathValue("id")
+	if idParam == "" {
+		h.logger.Error("id is required")
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+	err := h.service.DeleteOrder(r.Context(), idParam)
+	if err != nil {
+		h.logger.Error("failed to delete order", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Order deleted"))
 }

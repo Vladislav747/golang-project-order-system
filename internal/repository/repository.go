@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 	"log/slog"
@@ -31,6 +30,7 @@ func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
 	fmt.Println("order.Items", order.Items)
 	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.CustomerID, order.Status, order.TotalAmount, order.Currency, order.Items)
 	if err != nil {
+		r.logger.Error("failed to create order in repository", "error", err)
 		return err
 	}
 	return nil
@@ -41,6 +41,7 @@ func (r *repository) GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, e
 
 	rows, err := tx.Query(ctx, sqlQuery)
 	if err != nil {
+		r.logger.Error("failed to get orders in repository", "error", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -99,6 +100,7 @@ func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.
         &deletedAt,
     )
     if err != nil {
+		r.logger.Error("failed to get order in repository", "error", err)
         return model.Order{}, err
     }
     if deletedAt != nil {
@@ -116,11 +118,18 @@ func (r *repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
     `
 	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.Status)
 	if err != nil {
+		r.logger.Error("failed to update order in repository", "error", err)
 		return err
 	}
 	return nil
 }
 
-func (r *repository) DeleteOrder(id int64) error {
-	return errors.New("not implemented")
+func (r *repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) error {
+	sqlQuery := `DELETE FROM orders WHERE id = $1;`
+	_, err := tx.Exec(ctx, sqlQuery, id)
+	if err != nil {
+		r.logger.Error("failed to delete order in repository", "error", err)
+		return err
+	}
+	return nil
 }

@@ -65,7 +65,7 @@ func main() {
 
 	repository := repository.NewRepository(pool, logger)
 
-	service := service.NewService(ctx, repository, pool)
+	service := service.NewService(repository, pool)
 
 	orderHandler := handler.NewHandler(ctx, service, logger)
 
