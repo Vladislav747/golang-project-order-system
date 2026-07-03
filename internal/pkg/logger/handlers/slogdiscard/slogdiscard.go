@@ -2,8 +2,7 @@ package slogdiscard
 
 import (
 	"context"
-
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 func NewDiscardLogger() *slog.Logger {
