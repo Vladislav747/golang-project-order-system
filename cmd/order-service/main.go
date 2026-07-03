@@ -63,7 +63,7 @@ func main() {
 
 	ctx := context.Background()
 
-	repository := repository.NewRepository(pool)
+	repository := repository.NewRepository(pool, logger)
 
 	service := service.NewService(ctx, repository, pool)
 

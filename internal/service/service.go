@@ -13,7 +13,7 @@ type Repository interface {
 	CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error
 	GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, error)
 	GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.Order, error)
-	UpdateOrder(order model.Order) error
+	UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error
 	DeleteOrder(id int64) error
 }
 
@@ -77,8 +77,19 @@ func (s *service) GetOrder(ctx context.Context, id string) (model.Order, error) 
 	return res, nil
 }
 
-func (s *service) UpdateOrder(id int64) error {
-	return s.repository.UpdateOrder(model.Order{})
+func (s *service) UpdateOrder(ctx context.Context, order model.Order ) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = s.repository.UpdateOrder(ctx, tx, order)
+	if err != nil {
+		return err
+	}
+	tx.Commit(ctx)
+	return nil
 }
 
 func (s *service) DeleteOrder(id int64) error {

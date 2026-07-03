@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,10 +15,11 @@ import (
 
 type repository struct {
 	pool *pgxpool.Pool
+	logger *slog.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool) *repository {
-	return &repository{pool: pool}
+func NewRepository(pool *pgxpool.Pool, logger *slog.Logger) *repository {
+	return &repository{pool: pool, logger: logger}
 }
 
 func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
@@ -105,8 +107,18 @@ func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.
     return order, nil
 }
 
-func (r *repository) UpdateOrder(order model.Order) error {
-	return errors.New("not implemented")
+func (r *repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
+	sqlQuery := `
+        UPDATE orders
+		SET status = $2,
+			updated_at = NOW()
+		WHERE id = $1;
+    `
+	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.Status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *repository) DeleteOrder(id int64) error {

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"encoding/json"
@@ -14,7 +13,7 @@ type Service interface {
 	CreateOrder(ctx context.Context, order model.Order) error
 	GetOrders(ctx context.Context) ([]model.Order, error)
 	GetOrder(ctx context.Context, id string) (model.Order, error)
-	UpdateOrder(id int64) error
+	UpdateOrder(ctx context.Context, order model.Order) error
 	DeleteOrder(id int64) error
 }
 
@@ -56,6 +55,7 @@ func (h *handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	}
 	orders, err := json.Marshal(res)
 	if err != nil {
+		h.logger.Error("failed to marshal order", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -79,6 +79,7 @@ func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := json.Marshal(res)
 	if err != nil {
+		h.logger.Error("failed to marshal order", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -88,11 +89,26 @@ func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
-	_ = h.service.UpdateOrder(1)
-	fmt.Println("UpdateOrder")
+	var input model.Order
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.logger.Error("failed to decode request body", "error", err)
+		http.Error(w, "некорректный JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := h.service.UpdateOrder(r.Context(), input)
+	if err != nil {
+		h.logger.Error("failed to update order", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Order updated"))
 }
 
 func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	_ = h.service.DeleteOrder(1)
-	fmt.Println("DeleteOrder")
+	h.logger.Info("DeleteOrder")
 }
