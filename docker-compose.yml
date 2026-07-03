@@ -7,6 +7,7 @@ services:
     env_file:
       - .env
     environment:
+      KAFKA_BROKERS: broker:9092
       CONFIG_PATH: /app/config/prod.yaml
       DATABASE_URL: postgres://orders:orders@postgres:5432/orders?sslmode=disable
     depends_on:

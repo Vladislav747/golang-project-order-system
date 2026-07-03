@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
+	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
 
 type Repository interface {
@@ -21,12 +23,16 @@ type Repository interface {
 type service struct {
 	repository Repository
 	pool *pgxpool.Pool
+	producer *kafka.Producer
+	logger *slog.Logger
 }
 
-func NewService(repository Repository, pool *pgxpool.Pool) *service {
+func NewService(repository Repository, pool *pgxpool.Pool, producer *kafka.Producer, logger *slog.Logger) *service {
 	return &service{
 		repository: repository,
 		pool: pool,
+		producer: producer,
+		logger: logger,
 	}
 }
 
@@ -103,4 +109,17 @@ func (s *service) DeleteOrder(ctx context.Context, id string) error {
 	}
 	tx.Commit(ctx)
 	return nil
+}
+
+func (s *service) CreateOrderKafka(ctx context.Context, order model.Order) error {
+	message := kafka.CreateOrderMessage{
+		OrderID: order.ID,
+		CustomerID: order.CustomerID,
+		Status: order.Status,
+		TotalAmount: order.TotalAmount,
+		Currency: order.Currency,
+		Items: order.Items,
+	}
+	s.logger.Info("sending message to kafka", "message", message)
+	return s.producer.SendMessage(message)
 }

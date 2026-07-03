@@ -11,7 +11,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"context"
+	"strings"
 
+	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/repository"
@@ -65,9 +67,30 @@ func main() {
 
 	ctx := context.Background()
 
-	repository := repository.NewRepository(pool, logger)
+	// Иницилизация kafka
+	producer := kafka.NewProducer(
+		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
+		os.Getenv("KAFKA_TOPIC_ORDERS"),
+		logger,
+	)
+	defer producer.Close()
 
-	service := service.NewService(repository, pool)
+	repository := repository.NewRepository(pool, logger)
+	service := service.NewService(repository, pool, producer, logger)
+
+	consumer := kafka.NewConsumer(
+		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
+		os.Getenv("KAFKA_TOPIC_ORDERS"),
+		os.Getenv("KAFKA_CONSUMER_GROUP"),
+	)
+
+	appCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		if err := consumer.Run(appCtx); err != nil {
+			logger.Error("consumer stopped", slog.String("error", err.Error()))
+		}
+	}()
 
 	orderHandler := handler.NewHandler(ctx, service, logger)
 
@@ -140,9 +163,6 @@ func gracefulShutdown(server *http.Server, pool *pgxpool.Pool, logger *slog.Logg
 	if err := server.Shutdown(shutdownCtx); err != nil {
         logger.Error("server shutdown failed", slog.String("error", err.Error()))
     }
-
-	// Закрываем пул соединений
-	pool.Close()
 
 	logger.Info("server stopped")
 }

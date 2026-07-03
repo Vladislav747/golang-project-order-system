@@ -11,6 +11,7 @@ import (
 
 type Service interface {
 	CreateOrder(ctx context.Context, order model.Order) error
+	CreateOrderKafka(ctx context.Context, order model.Order) error
 	GetOrders(ctx context.Context) ([]model.Order, error)
 	GetOrder(ctx context.Context, id string) (model.Order, error)
 	UpdateOrder(ctx context.Context, order model.Order) error
@@ -123,4 +124,23 @@ func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Order deleted"))
+}
+
+func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
+	var input model.Order
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		h.logger.Error("failed to decode request body", "error", err)
+		http.Error(w, "некорректный JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := h.service.CreateOrderKafka(r.Context(), input)
+	if err != nil {
+		h.logger.Error("failed to create order kafka", "error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte("Order created kafka"))
 }
