@@ -1,8 +1,52 @@
 name: Deploy App
 
 on:
+  push:
+    branches:
+      - master
+  pull_request:
   workflow_dispatch:
     inputs:
       tag:
         description: "The tag to deploy"
         required: true
+
+jobs:
+  build:
+    name: Test build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build -v ./cmd/order-service
+
+      - name: Test
+        run: go test ./...
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy tag
+        run: echo "Deploy tag ${{ github.event.inputs.tag }}"
