@@ -31,3 +31,9 @@ docker-compose-exec-postgres-psql:
 
 service-test:
 	go test ./internal/service/ -v
+
+lint:
+	golangci-lint run
+
+lint-fix:
+	golangci-lint run --fix
