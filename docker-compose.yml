@@ -7,9 +7,9 @@ services:
     env_file:
       - .env
     environment:
-      KAFKA_BROKERS: broker:9092
+      KAFKA_BROKERS: broker:29092
       CONFIG_PATH: /app/config/prod.yaml
-      DATABASE_URL: postgres://orders:orders@postgres:5432/orders?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,5 +60,28 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
 
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./.config/prometheus.yml:/etc/prometheus/prometheus.yml  # Монтирование конфигурационного файла
+      - prometheus_data:/prometheus  # Для хранения временных метрик
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.listen-address=:9090"
+      - "--storage.tsdb.path=/prometheus"
+
 volumes:
   postgres_data:
+  grafana-storage:
+  prometheus_data:

@@ -39,3 +39,6 @@ context сквозь всю цепочку, graceful shutdown, pgxpool, мигр
 go run ./cmd/order-service/main.go
 go build ./cmd/order-service/main.go
 ```
+
+Что по следующим шагам
+- DTO?
