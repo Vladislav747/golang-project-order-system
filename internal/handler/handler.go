@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
-	"encoding/json"
+	"time"
+
 	"github.com/google/uuid"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
@@ -20,13 +22,13 @@ type Service interface {
 }
 
 type handler struct {
-	service Service
-	logger *slog.Logger
-	ctx context.Context
+	service        Service
+	logger         *slog.Logger
+	requestTimeout time.Duration
 }
 
-func NewHandler( ctx context.Context, service Service, logger *slog.Logger) *handler {
-	return &handler{service: service, logger: logger, ctx: ctx}
+func NewHandler(service Service, logger *slog.Logger, requestTimeout time.Duration) *handler {
+	return &handler{service: service, logger: logger, requestTimeout: requestTimeout}
 }
 
 func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +45,10 @@ func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		input.ID = ID
 	}
 
-	err := h.service.CreateOrder(r.Context(), input)
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+
+	err := h.service.CreateOrder(ctx, input)
 	if err != nil {
 		h.logger.Error("failed to create order", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -55,7 +60,9 @@ func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	res, err := h.service.GetOrders(r.Context())
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+	res, err := h.service.GetOrders(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -78,7 +85,9 @@ func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	res, err := h.service.GetOrder(r.Context(), idParam)
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+	res, err := h.service.GetOrder(ctx, idParam)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -104,7 +113,10 @@ func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.service.UpdateOrder(r.Context(), input)
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+
+	err := h.service.UpdateOrder(ctx, input)
 	if err != nil {
 		h.logger.Error("failed to update order", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -122,7 +134,11 @@ func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	err := h.service.DeleteOrder(r.Context(), idParam)
+
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+
+	err := h.service.DeleteOrder(ctx, idParam)
 	if err != nil {
 		h.logger.Error("failed to delete order", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -146,7 +162,10 @@ func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
 		input.ID = ID
 	}
 
-	err := h.service.CreateOrderKafka(r.Context(), input)
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+
+	err := h.service.CreateOrderKafka(ctx, input)
 	if err != nil {
 		h.logger.Error("failed to create order kafka", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -154,4 +173,9 @@ func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte("Order created kafka"))
+}
+
+func requestContext(r *http.Request, requestTimeout time.Duration) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	return ctx, cancel
 }

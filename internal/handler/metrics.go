@@ -16,7 +16,7 @@ var (
 		Name: "http_create_order_requests_total",
 		Help: "Total number of Create Order HTTP requests",
 	})
-    createOrderDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+	createOrderDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "http_create_order_duration_requests_total",
 		Help:    "Latency of HTTP requests in seconds",
 		Buckets: []float64{0.1, 0.5, 1},
@@ -69,7 +69,7 @@ var (
 )
 
 func init() {
-    prometheus.MustRegister(reqCounter, createOrderCount, createOrderDuration)
+	prometheus.MustRegister(reqCounter, createOrderCount, createOrderDuration)
 	prometheus.MustRegister(getOrdersCount, getOrdersDuration)
 	prometheus.MustRegister(getOrderCount, getOrderDuration)
 	prometheus.MustRegister(deleteOrderCount, deleteOrderDuration)

@@ -60,7 +60,7 @@ func newTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
-func newTestService(repo Repository) *service {
+func newTestService(repo Repository) *Service {
 	return NewService(repo, nil, nil, newTestLogger())
 }
 

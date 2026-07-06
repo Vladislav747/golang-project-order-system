@@ -17,8 +17,6 @@ type PrettyHandlerOptions struct {
 }
 
 type PrettyHandler struct {
-	// opts хранит конфигурацию pretty-хендлера.
-	opts PrettyHandlerOptions
 	// Handler оставлен для совместимости с базовым интерфейсом slog.Handler.
 	slog.Handler
 	// l печатает уже подготовленную "красивую" строку лога.

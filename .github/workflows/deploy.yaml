@@ -17,10 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: golangci/golangci-lint-action@v5
+      - uses: actions/setup-go@v5
         with:
-          version: v1.63.0
-          args: --fix
+          go-version-file: go.mod
+          cache: true
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.5.0
+          args: --timeout=5m
           cache: true
 
   build:

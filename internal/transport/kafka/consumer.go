@@ -10,13 +10,13 @@ import (
 )
 
 type CreateOrderHandler interface {
-    HandleCreateOrder(ctx context.Context, msg CreateOrderMessage) error
+	HandleCreateOrder(ctx context.Context, msg CreateOrderMessage) error
 }
 
 type Consumer struct {
-    reader *kafka.Reader
+	reader  *kafka.Reader
 	handler CreateOrderHandler
-	logger *slog.Logger
+	logger  *slog.Logger
 }
 
 func NewConsumer(brokers []string, topic string, groupID string, handler CreateOrderHandler, logger *slog.Logger) *Consumer {

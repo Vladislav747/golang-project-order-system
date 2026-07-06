@@ -19,24 +19,23 @@ type Repository interface {
 	DeleteOrder(ctx context.Context, tx pgx.Tx, id string) error
 }
 
-
-type service struct {
+type Service struct {
 	repository Repository
-	pool *pgxpool.Pool
-	producer *kafka.Producer
-	logger *slog.Logger
+	pool       *pgxpool.Pool
+	producer   *kafka.Producer
+	logger     *slog.Logger
 }
 
-func NewService(repository Repository, pool *pgxpool.Pool, producer *kafka.Producer, logger *slog.Logger) *service {
-	return &service{
+func NewService(repository Repository, pool *pgxpool.Pool, producer *kafka.Producer, logger *slog.Logger) *Service {
+	return &Service{
 		repository: repository,
-		pool: pool,
-		producer: producer,
-		logger: logger,
+		pool:       pool,
+		producer:   producer,
+		logger:     logger,
 	}
 }
 
-func (s *service) CreateOrder(ctx context.Context, order model.Order) error {
+func (s *Service) CreateOrder(ctx context.Context, order model.Order) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -51,7 +50,7 @@ func (s *service) CreateOrder(ctx context.Context, order model.Order) error {
 	return nil
 }
 
-func (s *service) GetOrders(ctx context.Context) ([]model.Order, error) {
+func (s *Service) GetOrders(ctx context.Context) ([]model.Order, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -66,7 +65,7 @@ func (s *service) GetOrders(ctx context.Context) ([]model.Order, error) {
 	return res, nil
 }
 
-func (s *service) GetOrder(ctx context.Context, id string) (model.Order, error) {
+func (s *Service) GetOrder(ctx context.Context, id string) (model.Order, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return model.Order{}, err
@@ -81,7 +80,7 @@ func (s *service) GetOrder(ctx context.Context, id string) (model.Order, error) 
 	return res, nil
 }
 
-func (s *service) UpdateOrder(ctx context.Context, order model.Order) error {
+func (s *Service) UpdateOrder(ctx context.Context, order model.Order) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -96,7 +95,7 @@ func (s *service) UpdateOrder(ctx context.Context, order model.Order) error {
 	return nil
 }
 
-func (s *service) DeleteOrder(ctx context.Context, id string) error {
+func (s *Service) DeleteOrder(ctx context.Context, id string) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -111,7 +110,7 @@ func (s *service) DeleteOrder(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *service) HandleCreateOrder(ctx context.Context, msg kafka.CreateOrderMessage) error {
+func (s *Service) HandleCreateOrder(ctx context.Context, msg kafka.CreateOrderMessage) error {
 	order := model.Order{
 		ID:          msg.OrderID,
 		CustomerID:  msg.CustomerID,
@@ -123,20 +122,20 @@ func (s *service) HandleCreateOrder(ctx context.Context, msg kafka.CreateOrderMe
 	return s.CreateOrderFromKafka(ctx, order)
 }
 
-func (s *service) CreateOrderKafka(ctx context.Context, order model.Order) error {
+func (s *Service) CreateOrderKafka(ctx context.Context, order model.Order) error {
 	message := kafka.CreateOrderMessage{
-		OrderID: order.ID,
-		CustomerID: order.CustomerID,
-		Status: order.Status,
+		OrderID:     order.ID,
+		CustomerID:  order.CustomerID,
+		Status:      order.Status,
 		TotalAmount: order.TotalAmount,
-		Currency: order.Currency,
-		Items: order.Items,
+		Currency:    order.Currency,
+		Items:       order.Items,
 	}
 	s.logger.Info("sending message to kafka", "message", message)
 	return s.producer.SendMessage(message)
 }
 
-func (s *service) CreateOrderFromKafka(ctx context.Context, order model.Order) error {
+func (s *Service) CreateOrderFromKafka(ctx context.Context, order model.Order) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err

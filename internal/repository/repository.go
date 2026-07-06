@@ -2,9 +2,8 @@ package repository
 
 import (
 	"context"
-	"fmt"
-	"time"
 	"log/slog"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +12,7 @@ import (
 )
 
 type repository struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
 	logger *slog.Logger
 }
 
@@ -27,7 +26,6 @@ func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
-	fmt.Println("order.Items", order.Items)
 	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.CustomerID, order.Status, order.TotalAmount, order.Currency, order.Items)
 	if err != nil {
 		r.logger.Error("failed to create order in repository", "error", err)
@@ -48,33 +46,33 @@ func (r *repository) GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, e
 
 	var orders []model.Order
 	for rows.Next() {
-        var order model.Order
-		var deletedAt *time.Time 
+		var order model.Order
+		var deletedAt *time.Time
 
 		err := rows.Scan(
-				&order.ID,
-				&order.CustomerID,
-				&order.Status,
-				&order.TotalAmount,
-				&order.Currency,
-				&order.Items,
-				&order.CreatedAt,
-				&order.UpdatedAt,
-				&deletedAt,
-			)
+			&order.ID,
+			&order.CustomerID,
+			&order.Status,
+			&order.TotalAmount,
+			&order.Currency,
+			&order.Items,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+			&deletedAt,
+		)
 		if err != nil {
 			return nil, err
 		}
 
 		if deletedAt != nil {
-            order.DeletedAt = *deletedAt
-        }
+			order.DeletedAt = *deletedAt
+		}
 		orders = append(orders, order)
 	}
-    if err := rows.Err(); err != nil {
-        return nil, err
-    }
-    return orders, nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return orders, nil
 
 }
 
@@ -88,25 +86,25 @@ func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.
 
 	var order model.Order
 	var deletedAt *time.Time
-    err := tx.QueryRow(ctx, sqlQuery, id).Scan(
-        &order.ID,
-        &order.CustomerID,
-        &order.Status,
-        &order.TotalAmount,
-        &order.Currency,
-        &order.Items,
-        &order.CreatedAt,
-        &order.UpdatedAt,
-        &deletedAt,
-    )
-    if err != nil {
+	err := tx.QueryRow(ctx, sqlQuery, id).Scan(
+		&order.ID,
+		&order.CustomerID,
+		&order.Status,
+		&order.TotalAmount,
+		&order.Currency,
+		&order.Items,
+		&order.CreatedAt,
+		&order.UpdatedAt,
+		&deletedAt,
+	)
+	if err != nil {
 		r.logger.Error("failed to get order in repository", "error", err)
-        return model.Order{}, err
-    }
-    if deletedAt != nil {
-        order.DeletedAt = *deletedAt
-    }
-    return order, nil
+		return model.Order{}, err
+	}
+	if deletedAt != nil {
+		order.DeletedAt = *deletedAt
+	}
+	return order, nil
 }
 
 func (r *repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {

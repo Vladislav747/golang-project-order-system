@@ -5,20 +5,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/ilyakaznacheev/cleanenv"
+	yaml "github.com/goccy/go-yaml"
 )
 
 type Config struct {
-	Env            string     `yaml:"env" env-default:"local"`
-	Port           int        `yaml:"port" env-default:"8082"`
-	HttpServer     HttpServer `yaml:"http_server"`
+	Env        string     `yaml:"env"`
+	Port       int        `yaml:"port"`
+	HttpServer HttpServer `yaml:"http_server"`
 }
 
 type HttpServer struct {
-	ReadTimeout time.Duration `yaml:"read_timeout" env-default:"10"`
-	WriteTimeout time.Duration `yaml:"write_timeout" env-default:"10"`
-	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60"`
-	GracefulShutdownTimeout time.Duration `yaml:"graceful_shutdown_timeout" env-default:"10"`
+	ReadTimeout             time.Duration `yaml:"read_timeout"`
+	WriteTimeout            time.Duration `yaml:"write_timeout"`
+	IdleTimeout             time.Duration `yaml:"idle_timeout"`
+	RequestTimeout          time.Duration `yaml:"request_timeout"`
+	GracefulShutdownTimeout time.Duration `yaml:"graceful_shutdown_timeout"`
 }
 
 func MustLoad() *Config {
@@ -51,13 +52,16 @@ func fetchConfigPath() string {
 
 func MustLoadByPath(configPath string) *Config {
 
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		panic("config file does not exist")
+	configFile, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			panic("config file does not exist")
+		}
+		panic("failed to read config: " + err.Error())
 	}
-
 	var cfg Config
 
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
+	if err := yaml.Unmarshal(configFile, &cfg); err != nil {
 		panic("failed to read config: " + err.Error())
 	}
 
