@@ -1,6 +1,8 @@
 # PHONY - тут игнорирует ошибки
 .PHONY: migrate dev-up dev-down build local-run rebuild-go-app-docker docker-compose-exec-postgres-psql
 
+DATABASE_URL ?= postgres://orders:orders@localhost:5432/orders?sslmode=disable
+
 migrate:
 	docker compose exec -T postgres psql -U orders -d orders -f /docker-entrypoint-initdb.d/init.sql
 
@@ -37,3 +39,12 @@ lint:
 
 lint-fix:
 	golangci-lint run --fix
+
+migrate-up:
+	goose up
+
+migrate-down:
+	goose down
+
+migrate-status:
+	goose status
