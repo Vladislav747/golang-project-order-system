@@ -34,49 +34,24 @@ func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
 	return nil
 }
 
-func (r *repository) GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, error) {
+func (r *repository) GetOrders(ctx context.Context) ([]model.Order, error) {
 	sqlQuery := `SELECT * from orders`
-
-	rows, err := tx.Query(ctx, sqlQuery)
+	rows, err := r.pool.Query(ctx, sqlQuery)
 	if err != nil {
 		r.logger.Error("failed to get orders in repository", zap.Error(err))
 		return nil, err
 	}
-	defer rows.Close()
 
-	var orders []model.Order
-	for rows.Next() {
-		var order model.Order
-		var deletedAt *time.Time
-
-		err := rows.Scan(
-			&order.ID,
-			&order.CustomerID,
-			&order.Status,
-			&order.TotalAmount,
-			&order.Currency,
-			&order.Items,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-			&deletedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if deletedAt != nil {
-			order.DeletedAt = *deletedAt
-		}
-		orders = append(orders, order)
-	}
-	if err := rows.Err(); err != nil {
+	orders, err := pgx.CollectRows(rows, r.scanOrder)
+	if err != nil {
+		r.logger.Error("failed to collect orders from rows", zap.Error(err))
 		return nil, err
 	}
 	return orders, nil
 
 }
 
-func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.Order, error) {
+func (r *repository) GetOrder(ctx context.Context, id string) (model.Order, error) {
 	sqlQuery := `
         SELECT id, customer_id, status, total_amount, currency, items,
                created_at, updated_at, deleted_at
@@ -84,25 +59,16 @@ func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.
         WHERE id = $1 AND deleted_at IS NULL
     `
 
-	var order model.Order
-	var deletedAt *time.Time
-	err := tx.QueryRow(ctx, sqlQuery, id).Scan(
-		&order.ID,
-		&order.CustomerID,
-		&order.Status,
-		&order.TotalAmount,
-		&order.Currency,
-		&order.Items,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-		&deletedAt,
-	)
+	rows, err := r.pool.Query(ctx, sqlQuery, id)
 	if err != nil {
 		r.logger.Error("failed to get order in repository", zap.Error(err))
 		return model.Order{}, err
 	}
-	if deletedAt != nil {
-		order.DeletedAt = *deletedAt
+
+	order, err := pgx.CollectOneRow(rows, r.scanOrder)
+	if err != nil {
+		r.logger.Error("failed to collect order from row", zap.Error(err))
+		return model.Order{}, err
 	}
 	return order, nil
 }
@@ -110,11 +76,11 @@ func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.
 func (r *repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
 	sqlQuery := `
         UPDATE orders
-		SET status = $2,
+		SET status = $1,
 			updated_at = NOW()
-		WHERE id = $1;
+		WHERE id = $2;
     `
-	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.Status)
+	_, err := tx.Exec(ctx, sqlQuery, order.Status, order.ID)
 	if err != nil {
 		r.logger.Error("failed to update order in repository", zap.Error(err))
 		return err
@@ -130,4 +96,29 @@ func (r *repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) erro
 		return err
 	}
 	return nil
+}
+
+// helper function to scan order from row
+func (r *repository) scanOrder(row pgx.CollectableRow) (model.Order, error) {
+	var order model.Order
+	var deletedAt *time.Time
+	err := row.Scan(
+		&order.ID,
+		&order.CustomerID,
+		&order.Status,
+		&order.TotalAmount,
+		&order.Currency,
+		&order.Items,
+		&order.CreatedAt,
+		&order.UpdatedAt,
+		&deletedAt,
+	)
+	if err != nil {
+		r.logger.Error("failed to scan order from row", zap.Error(err))
+		return model.Order{}, err
+	}
+	if deletedAt != nil {
+		order.DeletedAt = *deletedAt
+	}
+	return order, nil
 }

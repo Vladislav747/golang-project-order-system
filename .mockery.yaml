@@ -1,0 +1,17 @@
+disable-version-string: true
+with-expecter: true
+
+packages:
+  github.com/Vladislav747/golang-project-order-system/internal/service:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      Repository:
+      TxManager:
+  github.com/jackc/pgx/v5:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      Tx:

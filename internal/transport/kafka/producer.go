@@ -1,26 +1,36 @@
 package kafka
 
 import (
-	"context"
 	"encoding/json"
 
-	"github.com/segmentio/kafka-go"
+	"github.com/IBM/sarama"
 	"go.uber.org/zap"
 )
 
 type Producer struct {
-	writer *kafka.Writer
-	logger *zap.Logger
+	producer sarama.SyncProducer
+	topic    string
+	logger   *zap.Logger
 }
 
-func NewProducer(brokers []string, topic string, logger *zap.Logger) *Producer {
-	return &Producer{
-		writer: kafka.NewWriter(kafka.WriterConfig{
-			Brokers: brokers,
-			Topic:   topic,
-		}),
-		logger: logger,
+func NewProducer(brokers []string, topic string, logger *zap.Logger) (*Producer, error) {
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Version = sarama.V2_8_0_0
+
+	producer, err := sarama.NewSyncProducer(brokers, config)
+
+	if err != nil {
+		logger.Error("failed to create producer", zap.Error(err))
+		return nil, err
 	}
+
+	return &Producer{
+		producer: producer,
+		topic:    topic,
+		logger:   logger,
+	}, nil
 }
 
 func (p *Producer) SendMessage(message CreateOrderMessage) error {
@@ -31,9 +41,11 @@ func (p *Producer) SendMessage(message CreateOrderMessage) error {
 		return err
 	}
 
-	err = p.writer.WriteMessages(context.Background(), kafka.Message{
-		Value: data,
+	_, _, err = p.producer.SendMessage(&sarama.ProducerMessage{
+		Topic: p.topic,
+		Value: sarama.ByteEncoder(data),
 	})
+
 	if err != nil {
 		p.logger.Error("failed to send message to kafka", zap.Error(err))
 		return err
@@ -42,5 +54,5 @@ func (p *Producer) SendMessage(message CreateOrderMessage) error {
 }
 
 func (p *Producer) Close() error {
-	return p.writer.Close()
+	return p.producer.Close()
 }

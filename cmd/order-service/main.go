@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,11 +35,12 @@ func main() {
 
 	defer pool.Close()
 
-	producer := mustInitProducer(logger)
-	defer producer.Close()
+	producer, err := mustInitProducer(logger)
+	if err != nil {
+		log.Panicf("failed to create producer %v", zap.Error(err))
+	}
 	svc := mustInitService(pool, producer, logger)
-	consumer, cancel := mustStartConsumer(svc, logger)
-	defer cancel()
+	consumer, cancel, consumerWG := mustStartConsumer(svc, logger)
 
 	orderHandler := handler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
 
@@ -65,7 +67,7 @@ func main() {
 	}()
 
 	// Запускаем graceful shutdown
-	gracefulShutdown(server, pool, logger, consumer, producer, cfg)
+	gracefulShutdown(server, logger, consumer, cancel, consumerWG, producer, cfg)
 }
 
 func setupLogger(env string) *zap.Logger {
@@ -93,24 +95,23 @@ func setupLogger(env string) *zap.Logger {
 	return logger
 }
 
-func gracefulShutdown(server *http.Server, pool *pgxpool.Pool, logger *zap.Logger, consumer *kafka.Consumer, producer *kafka.Producer, cfg *config.Config) {
+func gracefulShutdown(
+	server *http.Server,
+	logger *zap.Logger,
+	consumer *kafka.Consumer,
+	consumerCancel context.CancelFunc,
+	consumerWG *sync.WaitGroup,
+	producer *kafka.Producer,
+	cfg *config.Config,
+) {
 	// Ждем сигналы прерывания
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Ждем сигналы прерывания
 	<-ctx.Done()
 
 	// Останавливаем сервер
 	logger.Info("shutting down server")
-
-	// Останавливаем consumer
-	logger.Info("shutting down consumer")
-	consumer.Close()
-
-	// Останавливаем producer
-	logger.Info("shutting down producer")
-	producer.Close()
 
 	// Устанавливаем timeout для graceful shutdown
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HttpServer.GracefulShutdownTimeout)
@@ -118,7 +119,21 @@ func gracefulShutdown(server *http.Server, pool *pgxpool.Pool, logger *zap.Logge
 
 	// Останавливаем сервер
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("server shutdown failed", zap.String("error", err.Error()))
+		logger.Error("server shutdown failed", zap.Error(err))
+	}
+
+	logger.Info("shutting down consumer")
+	consumerCancel()
+	if err := consumer.Close(); err != nil {
+		logger.Error("consumer close failed", zap.Error(err))
+	}
+	// горутина точно завершилась - consumer.Run завершится только после завершения работы консьюмера
+	consumerWG.Wait()
+
+	logger.Info("shutting down producer")
+	// Закрываем producer
+	if err := producer.Close(); err != nil {
+		logger.Error("producer close failed", zap.Error(err))
 	}
 
 	logger.Info("server stopped")
@@ -159,13 +174,13 @@ func mustInitPool(logger *zap.Logger) *pgxpool.Pool {
 	return pool
 }
 
-func mustInitProducer(logger *zap.Logger) *kafka.Producer {
-	producer := kafka.NewProducer(
+func mustInitProducer(logger *zap.Logger) (*kafka.Producer, error) {
+	producer, err := kafka.NewProducer(
 		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
 		os.Getenv("KAFKA_TOPIC_ORDERS"),
 		logger,
 	)
-	return producer
+	return producer, err
 }
 
 func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) *service.Service {
@@ -173,8 +188,8 @@ func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.L
 	return service.NewService(repository, pool, producer, logger)
 }
 
-func mustStartConsumer(svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc) {
-	consumer := kafka.NewConsumer(
+func mustStartConsumer(svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {
+	consumer, err := kafka.NewConsumer(
 		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
 		os.Getenv("KAFKA_TOPIC_ORDERS"),
 		os.Getenv("KAFKA_CONSUMER_GROUP"),
@@ -182,13 +197,20 @@ func mustStartConsumer(svc *service.Service, logger *zap.Logger) (*kafka.Consume
 		logger,
 	)
 
+	if err != nil {
+		log.Panicf("failed to create consumer: %v", err)
+	}
+
 	appCtx, cancel := context.WithCancel(context.Background())
 
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := consumer.Run(appCtx); err != nil {
-			logger.Error("consumer stopped", zap.String("error", err.Error()))
+			logger.Error("consumer stopped", zap.Error(err))
 		}
 	}()
 
-	return consumer, cancel
+	return consumer, cancel, &wg
 }

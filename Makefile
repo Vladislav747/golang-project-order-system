@@ -49,3 +49,5 @@ migrate-down:
 migrate-status:
 	goose status
 
+generate-mocks:
+	go tool mockery
