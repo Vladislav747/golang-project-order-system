@@ -34,14 +34,11 @@ func main() {
 
 	defer pool.Close()
 
-
 	producer := mustInitProducer(logger)
 	defer producer.Close()
 	svc := mustInitService(pool, producer, logger)
 	consumer, cancel := mustStartConsumer(svc, logger)
 	defer cancel()
-
-	
 
 	orderHandler := handler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
 
@@ -160,7 +157,6 @@ func mustInitPool(logger *slog.Logger) *pgxpool.Pool {
 	return pool
 }
 
-
 func mustInitProducer(logger *slog.Logger) *kafka.Producer {
 	producer := kafka.NewProducer(
 		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
@@ -174,7 +170,6 @@ func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *slog.
 	repository := repository.NewRepository(pool, logger)
 	return service.NewService(repository, pool, producer, logger)
 }
-
 
 func mustStartConsumer(svc *service.Service, logger *slog.Logger) (*kafka.Consumer, context.CancelFunc) {
 	consumer := kafka.NewConsumer(
