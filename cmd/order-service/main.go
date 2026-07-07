@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
@@ -68,30 +68,32 @@ func main() {
 	gracefulShutdown(server, pool, logger, consumer, producer, cfg)
 }
 
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
+func setupLogger(env string) *zap.Logger {
+
+	var (
+		logger *zap.Logger
+		err    error
+	)
 
 	switch env {
 	case envLocal:
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
+		logger, err = zap.NewDevelopment()
 
 	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-
+		logger, err = zap.NewProduction()
 	default: // If env config is invalid, set prod settings by default due to security
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
+		logger = zap.NewExample()
+
 	}
 
-	return log
+	if err != nil {
+		log.Panicf("initialize logger error: %v", err)
+	}
+
+	return logger
 }
 
-func gracefulShutdown(server *http.Server, pool *pgxpool.Pool, logger *slog.Logger, consumer *kafka.Consumer, producer *kafka.Producer, cfg *config.Config) {
+func gracefulShutdown(server *http.Server, pool *pgxpool.Pool, logger *zap.Logger, consumer *kafka.Consumer, producer *kafka.Producer, cfg *config.Config) {
 	// Ждем сигналы прерывания
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -116,13 +118,13 @@ func gracefulShutdown(server *http.Server, pool *pgxpool.Pool, logger *slog.Logg
 
 	// Останавливаем сервер
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		logger.Error("server shutdown failed", slog.String("error", err.Error()))
+		logger.Error("server shutdown failed", zap.String("error", err.Error()))
 	}
 
 	logger.Info("server stopped")
 }
 
-func mustInitConfigAndLogger() (*config.Config, *slog.Logger) {
+func mustInitConfigAndLogger() (*config.Config, *zap.Logger) {
 	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
 		log.Fatal("Error loading .env file: ", err)
 	}
@@ -132,14 +134,14 @@ func mustInitConfigAndLogger() (*config.Config, *slog.Logger) {
 	logger := setupLogger(cfg.Env)
 
 	logger.Info("starting app",
-		slog.String("env", cfg.Env),
-		slog.String("port", strconv.Itoa(cfg.Port)),
+		zap.String("env", cfg.Env),
+		zap.Int("port", cfg.Port),
 	)
 
 	return cfg, logger
 }
 
-func mustInitPool(logger *slog.Logger) *pgxpool.Pool {
+func mustInitPool(logger *zap.Logger) *pgxpool.Pool {
 	databaseUrl := os.Getenv("DATABASE_URL")
 	if databaseUrl == "" {
 		log.Panicf("DATABASE_URL is not set: %v", databaseUrl)
@@ -157,7 +159,7 @@ func mustInitPool(logger *slog.Logger) *pgxpool.Pool {
 	return pool
 }
 
-func mustInitProducer(logger *slog.Logger) *kafka.Producer {
+func mustInitProducer(logger *zap.Logger) *kafka.Producer {
 	producer := kafka.NewProducer(
 		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
 		os.Getenv("KAFKA_TOPIC_ORDERS"),
@@ -166,12 +168,12 @@ func mustInitProducer(logger *slog.Logger) *kafka.Producer {
 	return producer
 }
 
-func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *slog.Logger) *service.Service {
+func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) *service.Service {
 	repository := repository.NewRepository(pool, logger)
 	return service.NewService(repository, pool, producer, logger)
 }
 
-func mustStartConsumer(svc *service.Service, logger *slog.Logger) (*kafka.Consumer, context.CancelFunc) {
+func mustStartConsumer(svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc) {
 	consumer := kafka.NewConsumer(
 		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
 		os.Getenv("KAFKA_TOPIC_ORDERS"),
@@ -184,7 +186,7 @@ func mustStartConsumer(svc *service.Service, logger *slog.Logger) (*kafka.Consum
 
 	go func() {
 		if err := consumer.Run(appCtx); err != nil {
-			logger.Error("consumer stopped", slog.String("error", err.Error()))
+			logger.Error("consumer stopped", zap.String("error", err.Error()))
 		}
 	}()
 

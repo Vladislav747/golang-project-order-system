@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
@@ -23,10 +23,10 @@ type Service struct {
 	repository Repository
 	pool       *pgxpool.Pool
 	producer   *kafka.Producer
-	logger     *slog.Logger
+	logger     *zap.Logger
 }
 
-func NewService(repository Repository, pool *pgxpool.Pool, producer *kafka.Producer, logger *slog.Logger) *Service {
+func NewService(repository Repository, pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) *Service {
 	return &Service{
 		repository: repository,
 		pool:       pool,
@@ -131,7 +131,7 @@ func (s *Service) CreateOrderKafka(ctx context.Context, order model.Order) error
 		Currency:    order.Currency,
 		Items:       order.Items,
 	}
-	s.logger.Info("sending message to kafka", "message", message)
+	s.logger.Info("sending message to kafka", zap.Any("message", message))
 	return s.producer.SendMessage(message)
 }
 

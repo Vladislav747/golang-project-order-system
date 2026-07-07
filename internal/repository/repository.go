@@ -2,21 +2,21 @@ package repository
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
 type repository struct {
 	pool   *pgxpool.Pool
-	logger *slog.Logger
+	logger *zap.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool, logger *slog.Logger) *repository {
+func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *repository {
 	return &repository{pool: pool, logger: logger}
 }
 
@@ -28,7 +28,7 @@ func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
 
 	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.CustomerID, order.Status, order.TotalAmount, order.Currency, order.Items)
 	if err != nil {
-		r.logger.Error("failed to create order in repository", "error", err)
+		r.logger.Error("failed to create order in repository", zap.Error(err))
 		return err
 	}
 	return nil
@@ -39,7 +39,7 @@ func (r *repository) GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, e
 
 	rows, err := tx.Query(ctx, sqlQuery)
 	if err != nil {
-		r.logger.Error("failed to get orders in repository", "error", err)
+		r.logger.Error("failed to get orders in repository", zap.Error(err))
 		return nil, err
 	}
 	defer rows.Close()
@@ -98,7 +98,7 @@ func (r *repository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.
 		&deletedAt,
 	)
 	if err != nil {
-		r.logger.Error("failed to get order in repository", "error", err)
+		r.logger.Error("failed to get order in repository", zap.Error(err))
 		return model.Order{}, err
 	}
 	if deletedAt != nil {
@@ -116,7 +116,7 @@ func (r *repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
     `
 	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.Status)
 	if err != nil {
-		r.logger.Error("failed to update order in repository", "error", err)
+		r.logger.Error("failed to update order in repository", zap.Error(err))
 		return err
 	}
 	return nil
@@ -126,7 +126,7 @@ func (r *repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) erro
 	sqlQuery := `DELETE FROM orders WHERE id = $1;`
 	_, err := tx.Exec(ctx, sqlQuery, id)
 	if err != nil {
-		r.logger.Error("failed to delete order in repository", "error", err)
+		r.logger.Error("failed to delete order in repository", zap.Error(err))
 		return err
 	}
 	return nil

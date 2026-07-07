@@ -3,11 +3,11 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
@@ -23,11 +23,11 @@ type Service interface {
 
 type handler struct {
 	service        Service
-	logger         *slog.Logger
+	logger         *zap.Logger
 	requestTimeout time.Duration
 }
 
-func NewHandler(service Service, logger *slog.Logger, requestTimeout time.Duration) *handler {
+func NewHandler(service Service, logger *zap.Logger, requestTimeout time.Duration) *handler {
 	return &handler{service: service, logger: logger, requestTimeout: requestTimeout}
 }
 
@@ -49,7 +49,7 @@ func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.CreateOrder(ctx, input)
 	if err != nil {
-		h.logger.Error("failed to create order", "error", err)
+		h.logger.Error("failed to create order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -68,7 +68,7 @@ func (h *handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	}
 	orders, err := json.Marshal(res)
 	if err != nil {
-		h.logger.Error("failed to marshal order", "error", err)
+		h.logger.Error("failed to marshal order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -94,7 +94,7 @@ func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := json.Marshal(res)
 	if err != nil {
-		h.logger.Error("failed to marshal order", "error", err)
+		h.logger.Error("failed to marshal order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -116,7 +116,7 @@ func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.UpdateOrder(ctx, input)
 	if err != nil {
-		h.logger.Error("failed to update order", "error", err)
+		h.logger.Error("failed to update order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -138,7 +138,7 @@ func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.DeleteOrder(ctx, idParam)
 	if err != nil {
-		h.logger.Error("failed to delete order", "error", err)
+		h.logger.Error("failed to delete order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -164,7 +164,7 @@ func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.CreateOrderKafka(ctx, input)
 	if err != nil {
-		h.logger.Error("failed to create order kafka", "error", err)
+		h.logger.Error("failed to create order kafka", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -177,9 +177,9 @@ func requestContext(r *http.Request, requestTimeout time.Duration) (context.Cont
 	return ctx, cancel
 }
 
-func decodeRequest(r *http.Request, input *model.Order, logger *slog.Logger) error {
+func decodeRequest(r *http.Request, input *model.Order, logger *zap.Logger) error {
 	if err := json.NewDecoder(r.Body).Decode(input); err != nil {
-		logger.Error("failed to decode request body", "error", err)
+		logger.Error("failed to decode request body", zap.Error(err))
 		return err
 	}
 	return nil

@@ -3,17 +3,17 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
 type Producer struct {
 	writer *kafka.Writer
-	logger *slog.Logger
+	logger *zap.Logger
 }
 
-func NewProducer(brokers []string, topic string, logger *slog.Logger) *Producer {
+func NewProducer(brokers []string, topic string, logger *zap.Logger) *Producer {
 	return &Producer{
 		writer: kafka.NewWriter(kafka.WriterConfig{
 			Brokers: brokers,
@@ -27,7 +27,7 @@ func (p *Producer) SendMessage(message CreateOrderMessage) error {
 
 	data, err := json.Marshal(message)
 	if err != nil {
-		p.logger.Error("failed to marshal message SendMessage", "error", err)
+		p.logger.Error("failed to marshal message SendMessage", zap.Error(err))
 		return err
 	}
 
@@ -35,7 +35,7 @@ func (p *Producer) SendMessage(message CreateOrderMessage) error {
 		Value: data,
 	})
 	if err != nil {
-		p.logger.Error("failed to send message to kafka", "error", err)
+		p.logger.Error("failed to send message to kafka", zap.Error(err))
 		return err
 	}
 	return nil

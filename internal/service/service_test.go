@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
@@ -56,12 +56,16 @@ func (m *mockRepository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) 
 	return nil
 }
 
-func newTestLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
+func newTestLogger() (*zap.Logger, err) {
+	return zap.NewDevelopment()
 }
 
 func newTestService(repo Repository) *Service {
-	return NewService(repo, nil, nil, newTestLogger())
+	logger, err := newTestLogger()
+	if err != nil {
+		log.Fatal("failed to create logger", zap.Error(err))
+	}
+	return NewService(repo, nil, nil, logger)
 }
 
 func TestNewService(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
 type CreateOrderHandler interface {
@@ -16,10 +16,10 @@ type CreateOrderHandler interface {
 type Consumer struct {
 	reader  *kafka.Reader
 	handler CreateOrderHandler
-	logger  *slog.Logger
+	logger  *zap.Logger
 }
 
-func NewConsumer(brokers []string, topic string, groupID string, handler CreateOrderHandler, logger *slog.Logger) *Consumer {
+func NewConsumer(brokers []string, topic string, groupID string, handler CreateOrderHandler, logger *zap.Logger) *Consumer {
 	return &Consumer{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers: brokers,
@@ -47,12 +47,12 @@ func (c *Consumer) Run(ctx context.Context) error {
 
 		var msgData CreateOrderMessage
 		if err := json.Unmarshal(msg.Value, &msgData); err != nil {
-			c.logger.Error("failed to unmarshal message", "error", err)
+			c.logger.Error("failed to unmarshal message", zap.Error(err))
 			continue
 		}
 
 		if err := c.handler.HandleCreateOrder(ctx, msgData); err != nil {
-			c.logger.Error("failed to handle message", "error", err)
+			c.logger.Error("failed to handle message", zap.Error(err))
 			continue
 		}
 
