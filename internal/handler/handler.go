@@ -34,9 +34,8 @@ func NewHandler(service Service, logger *slog.Logger, requestTimeout time.Durati
 func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		h.logger.Error("failed to decode request body", "error", err)
-		http.Error(w, "некорректный JSON", http.StatusBadRequest)
+	if err := decodeRequest(r, &input, h.logger); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -107,9 +106,8 @@ func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		h.logger.Error("failed to decode request body", "error", err)
-		http.Error(w, "некорректный JSON", http.StatusBadRequest)
+	if err := decodeRequest(r, &input, h.logger); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -151,9 +149,8 @@ func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		h.logger.Error("failed to decode request body", "error", err)
-		http.Error(w, "некорректный JSON", http.StatusBadRequest)
+	if err := decodeRequest(r, &input, h.logger); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -178,4 +175,12 @@ func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
 func requestContext(r *http.Request, requestTimeout time.Duration) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 	return ctx, cancel
+}
+
+func decodeRequest(r *http.Request, input *model.Order, logger *slog.Logger) error {
+	if err := json.NewDecoder(r.Body).Decode(input); err != nil {
+		logger.Error("failed to decode request body", "error", err)
+		return err
+	}
+	return nil
 }
