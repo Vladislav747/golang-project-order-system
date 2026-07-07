@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"io"
 	"testing"
 
 	"github.com/google/uuid"
@@ -56,15 +55,12 @@ func (m *mockRepository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) 
 	return nil
 }
 
-func newTestLogger() (*zap.Logger, err) {
+func newTestLogger() (*zap.Logger, error) {
 	return zap.NewDevelopment()
 }
 
 func newTestService(repo Repository) *Service {
-	logger, err := newTestLogger()
-	if err != nil {
-		log.Fatal("failed to create logger", zap.Error(err))
-	}
+	logger, _ := newTestLogger()
 	return NewService(repo, nil, nil, logger)
 }
 

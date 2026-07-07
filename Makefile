@@ -48,3 +48,4 @@ migrate-down:
 
 migrate-status:
 	goose status
+
