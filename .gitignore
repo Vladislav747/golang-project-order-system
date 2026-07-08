@@ -1,3 +1,4 @@
 .env
 /order-service
 .idea
+.config/.DS_Store
