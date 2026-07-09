@@ -15,6 +15,7 @@ type Repository interface {
 	GetOrders(ctx context.Context) ([]model.Order, error)
 	GetOrder(ctx context.Context, id string) (model.Order, error)
 	UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error
+	DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) error
 	DeleteOrder(ctx context.Context, tx pgx.Tx, id string) error
 }
 
@@ -63,5 +64,11 @@ func (s *Service) UpdateOrder(ctx context.Context, order model.Order) error {
 func (s *Service) DeleteOrder(ctx context.Context, id string) error {
 	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
 		return s.repository.DeleteOrder(ctx, tx, id)
+	})
+}
+
+func (s *Service) DeleteSoftOrder(ctx context.Context, id string) error {
+	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
+		return s.repository.DeleteSoftOrder(ctx, tx, id)
 	})
 }

@@ -98,6 +98,23 @@ func (r *repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) erro
 	return nil
 }
 
+
+func (r *repository) DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) error {
+	sqlQuery := `
+        UPDATE orders
+		SET status = 'deleted',
+			updated_at = NOW(),
+			deleted_at = NOW()
+		WHERE id = $1;
+    `
+	_, err := tx.Exec(ctx, sqlQuery, id)
+	if err != nil {
+		r.logger.Error("failed to delete soft order in repository", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
 // helper function to scan order from row
 func (r *repository) scanOrder(row pgx.CollectableRow) (model.Order, error) {
 	var order model.Order

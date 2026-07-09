@@ -19,6 +19,7 @@ type Service interface {
 	GetOrder(ctx context.Context, id string) (model.Order, error)
 	UpdateOrder(ctx context.Context, order model.Order) error
 	DeleteOrder(ctx context.Context, id string) error
+	DeleteSoftOrder(ctx context.Context, id string) error
 }
 
 type handler struct {
@@ -144,6 +145,27 @@ func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Order deleted"))
+}
+
+func (h *handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
+	idParam := r.PathValue("id")
+	if idParam == "" {
+		h.logger.Error("id is required")
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+
+	err := h.service.DeleteSoftOrder(ctx, idParam)
+	if err != nil {
+		h.logger.Error("failed to delete soft order", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Order marked as deleted"))
 }
 
 func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
