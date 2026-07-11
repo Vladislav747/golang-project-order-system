@@ -17,7 +17,10 @@ import (
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
-	"github.com/Vladislav747/golang-project-order-system/internal/repository"
+	orderHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
+	orderEventHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order_event"
+	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
+	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
@@ -42,11 +45,12 @@ func main() {
 	svc := mustInitService(pool, producer, logger)
 	consumer, cancel, consumerWG := mustStartConsumer(svc, logger)
 
-	orderHandler := handler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
+	orderHandler := orderHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
+	orderEventHandler := orderEventHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
 
 	// Регистрируем маршруты
 	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux, orderHandler)
+	handler.RegisterRoutes(mux, orderHandler, orderEventHandler)
 
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.Port),
@@ -184,8 +188,9 @@ func mustInitProducer(logger *zap.Logger) (*kafka.Producer, error) {
 }
 
 func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) *service.Service {
-	repository := repository.NewRepository(pool, logger)
-	return service.NewService(repository, pool, producer, logger)
+	repositoryOrder := repositoryOrder.NewRepository(pool, logger)
+	repositoryOrderEvent := repositoryOrderEvent.NewRepository(pool, logger)
+	return service.NewService(repositoryOrder, repositoryOrderEvent, pool, producer, logger)
 }
 
 func mustStartConsumer(svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {

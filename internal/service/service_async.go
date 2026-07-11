@@ -38,6 +38,6 @@ func (s *Service) CreateOrderKafka(ctx context.Context, order model.Order) error
 func (s *Service) CreateOrderFromKafka(ctx context.Context, order model.Order) error {
 
 	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
-		return s.repository.CreateOrder(ctx, tx, order)
+		return s.repositoryOrder.CreateOrder(ctx, tx, order)
 	})
 }

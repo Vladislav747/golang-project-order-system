@@ -1,4 +1,4 @@
-package handler
+package Handler
 
 import (
 	"context"
@@ -22,17 +22,17 @@ type Service interface {
 	DeleteSoftOrder(ctx context.Context, id string) error
 }
 
-type handler struct {
+type Handler struct {
 	service        Service
 	logger         *zap.Logger
 	requestTimeout time.Duration
 }
 
-func NewHandler(service Service, logger *zap.Logger, requestTimeout time.Duration) *handler {
-	return &handler{service: service, logger: logger, requestTimeout: requestTimeout}
+func NewHandler(service Service, logger *zap.Logger, requestTimeout time.Duration) *Handler {
+	return &Handler{service: service, logger: logger, requestTimeout: requestTimeout}
 }
 
-func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
 	if err := decodeRequest(r, &input, h.logger); err != nil {
@@ -59,7 +59,7 @@ func (h *handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(input.ID.String()))
 }
 
-func (h *handler) GetOrders(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, h.requestTimeout)
 	defer cancel()
 	res, err := h.service.GetOrders(ctx)
@@ -78,7 +78,7 @@ func (h *handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	w.Write(orders)
 }
 
-func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	idParam := r.PathValue("id")
 	if idParam == "" {
 		h.logger.Error("id is required")
@@ -104,7 +104,7 @@ func (h *handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	w.Write(order)
 }
 
-func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
 	if err := decodeRequest(r, &input, h.logger); err != nil {
@@ -126,7 +126,7 @@ func (h *handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Order updated"))
 }
 
-func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	idParam := r.PathValue("id")
 	if idParam == "" {
 		h.logger.Error("id is required")
@@ -147,7 +147,7 @@ func (h *handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Order deleted"))
 }
 
-func (h *handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
 	idParam := r.PathValue("id")
 	if idParam == "" {
 		h.logger.Error("id is required")
@@ -168,7 +168,7 @@ func (h *handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Order marked as deleted"))
 }
 
-func (h *handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
 	if err := decodeRequest(r, &input, h.logger); err != nil {

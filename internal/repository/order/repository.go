@@ -1,10 +1,10 @@
-package repository
+package order
 
 import (
 	"context"
-	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
@@ -98,7 +98,6 @@ func (r *repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) erro
 	return nil
 }
 
-
 func (r *repository) DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) error {
 	sqlQuery := `
         UPDATE orders
@@ -118,7 +117,8 @@ func (r *repository) DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) 
 // helper function to scan order from row
 func (r *repository) scanOrder(row pgx.CollectableRow) (model.Order, error) {
 	var order model.Order
-	var deletedAt *time.Time
+	var deletedAt pgtype.Timestamptz
+
 	err := row.Scan(
 		&order.ID,
 		&order.CustomerID,
@@ -134,8 +134,11 @@ func (r *repository) scanOrder(row pgx.CollectableRow) (model.Order, error) {
 		r.logger.Error("failed to scan order from row", zap.Error(err))
 		return model.Order{}, err
 	}
-	if deletedAt != nil {
-		order.DeletedAt = *deletedAt
+
+	if deletedAt.Valid {
+		t := deletedAt.Time
+		order.DeletedAt = &t
 	}
+
 	return order, nil
 }
