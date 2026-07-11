@@ -7,7 +7,8 @@ packages:
       dir: internal/service/mocks
       outpkg: mocks
     interfaces:
-      Repository:
+      RepositoryOrder:
+      RepositoryOrderEvent:
       TxManager:
   github.com/jackc/pgx/v5:
     config:
