@@ -14,7 +14,7 @@ func RegisterRoutes(mux *http.ServeMux, orderHandler *orderhandler.Handler, orde
 	mux.HandleFunc("POST /order", InstrumentMetricsHandler("POST", "/order", orderHandler.CreateOrder))
 
 	mux.HandleFunc("GET /orders/{id}", InstrumentMetricsHandler("GET", "/orders/{id}", orderHandler.GetOrder))
-	mux.HandleFunc("PATCH /orders/{id}", InstrumentMetricsHandler("PATCH", "/orders/{id}", orderHandler.UpdateOrder))
+	mux.HandleFunc("PATCH /orders", InstrumentMetricsHandler("PATCH", "/orders", orderHandler.UpdateOrder))
 	mux.HandleFunc("DELETE /orders/{id}", InstrumentMetricsHandler("DELETE", "/orders/{id}", orderHandler.DeleteSoftOrder))
 	mux.HandleFunc("DELETE /orders/hard/{id}", InstrumentMetricsHandler("DELETE", "/orders/hard/{id}", orderHandler.DeleteOrder))
 

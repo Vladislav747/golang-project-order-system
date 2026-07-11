@@ -14,8 +14,7 @@ import (
 )
 
 func TestNewService(t *testing.T) {
-	repoOrder := mocks.NewMockRepositoryOrder(t)
-	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
+	repoOrder, repoEvent, _, _ := createMocks(t)
 	svc := NewService(repoOrder, repoEvent, nil, nil, zap.NewNop())
 
 	if svc == nil {
@@ -26,10 +25,7 @@ func TestNewService(t *testing.T) {
 func TestCreateOrder_RepositoryCalled(t *testing.T) {
 	ctx := context.Background()
 
-	repoOrder := mocks.NewMockRepositoryOrder(t)
-	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
-	txManager := mocks.NewMockTxManager(t)
-	mockTx := mocks.NewMockTx(t)
+	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
 
 	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
@@ -58,7 +54,7 @@ func TestCreateOrder_RepositoryCalled(t *testing.T) {
 func TestGetOrders_RepositoryCalled(t *testing.T) {
 	ctx := context.Background()
 
-	repoOrder := mocks.NewMockRepositoryOrder(t)
+	repoOrder, _, _, _ := createMocks(t)
 
 	repoOrder.EXPECT().
 		GetOrders(mock.Anything).
@@ -75,10 +71,7 @@ func TestGetOrders_RepositoryCalled(t *testing.T) {
 func TestDeleteOrder_RepositoryCalled(t *testing.T) {
 	ctx := context.Background()
 
-	repoOrder := mocks.NewMockRepositoryOrder(t)
-	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
-	txManager := mocks.NewMockTxManager(t)
-	mockTx := mocks.NewMockTx(t)
+	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
 
 	orderID := "6ba7b810-9dad-11d1-80b4-00c04fd43023"
 
@@ -107,10 +100,7 @@ func TestDeleteOrder_RepositoryCalled(t *testing.T) {
 func TestUpdateOrder_RepositoryCalled(t *testing.T) {
 	ctx := context.Background()
 
-	repoOrder := mocks.NewMockRepositoryOrder(t)
-	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
-	txManager := mocks.NewMockTxManager(t)
-	mockTx := mocks.NewMockTx(t)
+	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
 
 	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
@@ -139,7 +129,7 @@ func TestUpdateOrder_RepositoryCalled(t *testing.T) {
 func TestGetOrder_RepositoryCalled(t *testing.T) {
 	ctx := context.Background()
 
-	repoOrder := mocks.NewMockRepositoryOrder(t)
+	repoOrder, _, _, _ := createMocks(t)
 
 	expected := model.Order{Status: "pending"}
 
@@ -152,4 +142,15 @@ func TestGetOrder_RepositoryCalled(t *testing.T) {
 	order, err := svc.GetOrder(ctx, "123")
 	require.NoError(t, err)
 	require.Equal(t, expected, order)
+}
+
+
+func createMocks(t *testing.T) (*mocks.MockRepositoryOrder, *mocks.MockRepositoryOrderEvent, *mocks.MockTxManager, *mocks.MockTx) {
+	t.Helper()
+	repoOrder := mocks.NewMockRepositoryOrder(t)
+	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
+	txManager := mocks.NewMockTxManager(t)
+	mockTx := mocks.NewMockTx(t)
+
+	return repoOrder, repoEvent, txManager, mockTx
 }

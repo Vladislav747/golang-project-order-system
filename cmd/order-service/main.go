@@ -23,12 +23,7 @@ import (
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
-)
-
-const (
-	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
+	"github.com/Vladislav747/golang-project-order-system/internal/pkg/logger"
 )
 
 func main() {
@@ -72,31 +67,6 @@ func main() {
 
 	// Запускаем graceful shutdown
 	gracefulShutdown(server, logger, consumer, cancel, consumerWG, producer, cfg)
-}
-
-func setupLogger(env string) *zap.Logger {
-
-	var (
-		logger *zap.Logger
-		err    error
-	)
-
-	switch env {
-	case envLocal:
-		logger, err = zap.NewDevelopment()
-
-	case envProd:
-		logger, err = zap.NewProduction()
-	default: // If env config is invalid, set prod settings by default due to security
-		logger = zap.NewExample()
-
-	}
-
-	if err != nil {
-		log.Panicf("initialize logger error: %v", err)
-	}
-
-	return logger
 }
 
 func gracefulShutdown(
@@ -150,7 +120,7 @@ func mustInitConfigAndLogger() (*config.Config, *zap.Logger) {
 
 	cfg := config.MustLoad()
 
-	logger := setupLogger(cfg.Env)
+	logger := logger.MustNew(cfg.Env)
 
 	logger.Info("starting app",
 		zap.String("env", cfg.Env),

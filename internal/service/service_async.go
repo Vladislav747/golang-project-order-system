@@ -60,19 +60,49 @@ func (s *Service) CreateOrderKafka(ctx context.Context, order model.Order) error
 func (s *Service) CreateOrderFromKafka(ctx context.Context, order model.Order) error {
 
 	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
-		return s.repositoryOrder.CreateOrder(ctx, tx, order)
+		if err := s.repositoryOrder.CreateOrder(ctx, tx, order); err != nil {
+			return err
+		}
+
+		event, err := buildOrderEvent(order.ID, model.EventCreated, model.SourceKafka, nil)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+		}
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})
 }
 
 func (s *Service) UpdateOrderFromKafka(ctx context.Context, order model.Order) error {
 	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
-		return s.repositoryOrder.UpdateOrder(ctx, tx, order)
+		if err := s.repositoryOrder.UpdateOrder(ctx, tx, order); err != nil {
+			return err
+		}
+
+		event, err := buildOrderEvent(order.ID, model.EventUpdated, model.SourceKafka, order)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+		}
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})
 }
 
 func (s *Service) DeleteOrderFromKafka(ctx context.Context, id string) error {
 	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
-		return s.repositoryOrder.DeleteSoftOrder(ctx, tx, id)
+		if err := s.repositoryOrder.DeleteSoftOrder(ctx, tx, id); err != nil {
+			return err
+		}
+
+		orderIDUUID, err := uuid.Parse(id)
+		if err != nil {
+			s.logger.Error("failed to parse order ID", zap.Error(err))
+			return err
+		}
+
+		event, err := buildOrderEvent(orderIDUUID, model.EventDeleted, model.SourceKafka, nil)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+		}
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})
 }
 

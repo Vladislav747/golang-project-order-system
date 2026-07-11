@@ -120,6 +120,22 @@ func (s *Service) DeleteOrder(ctx context.Context, id string) error {
 
 func (s *Service) DeleteSoftOrder(ctx context.Context, id string) error {
 	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
-		return s.repositoryOrder.DeleteSoftOrder(ctx, tx, id)
+
+		if err := s.repositoryOrder.DeleteSoftOrder(ctx, tx, id); err != nil {
+			s.logger.Error("failed to delete soft order in repository", zap.Error(err))
+			return err
+		}
+
+		orderIDUUID, err := uuid.Parse(id)
+		if err != nil {
+			s.logger.Error("failed to parse order ID", zap.Error(err))
+			return err
+		}
+
+		event, err := buildOrderEvent(orderIDUUID, model.EventDeleted, model.SourceHTTPSync, nil)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+		}
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})
 }

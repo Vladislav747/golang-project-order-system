@@ -138,6 +138,12 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if input.ID == uuid.Nil {
+		h.logger.Error("id is required")
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+
 	ctx, cancel := requestContext(r, h.requestTimeout)
 	defer cancel()
 

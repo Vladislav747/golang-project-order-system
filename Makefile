@@ -1,5 +1,5 @@
 # PHONY - тут игнорирует ошибки
-.PHONY: migrate dev-up dev-down build local-run rebuild-go-app-docker docker-compose-exec-postgres-psql
+.PHONY: migrate dev-up dev-down prod-up prod-down build local-run rebuild-go-app-docker docker-compose-exec-postgres-psql
 
 DATABASE_URL ?= postgres://orders:orders@localhost:5432/orders?sslmode=disable
 
@@ -18,6 +18,12 @@ dev-up:
 
 dev-down:
 	docker-compose down
+
+prod-up:
+	docker compose -f docker-compose.prod.yml up -d --build
+
+prod-down:
+	docker compose -f docker-compose.prod.yml down
 
 build:
 	go build ./cmd/order-service/main.go
@@ -51,3 +57,12 @@ migrate-status:
 
 generate-mocks:
 	go tool mockery
+
+deploy-prod:
+	docker compose -f docker-compose.prod.yml up -d --build
+
+deploy-prod-down:
+	docker compose -f docker-compose.prod.yml down
+
+deploy-prod-logs:
+	docker compose -f docker-compose.prod.yml logs -f go-app
