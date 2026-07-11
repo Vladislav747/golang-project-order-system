@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
@@ -20,16 +21,29 @@ type Service interface {
 	UpdateOrder(ctx context.Context, order model.Order) error
 	DeleteOrder(ctx context.Context, id string) error
 	DeleteSoftOrder(ctx context.Context, id string) error
+	UpdateOrderKafka(ctx context.Context, order model.Order) error
+	DeleteOrderKafka(ctx context.Context, id string) error
 }
 
 type Handler struct {
 	service        Service
 	logger         *zap.Logger
 	requestTimeout time.Duration
+	processingMode config.ProcessingMode
 }
 
-func NewHandler(service Service, logger *zap.Logger, requestTimeout time.Duration) *Handler {
-	return &Handler{service: service, logger: logger, requestTimeout: requestTimeout}
+func NewHandler(
+	service Service,
+	logger *zap.Logger,
+	requestTimeout time.Duration,
+	processingMode config.ProcessingMode,
+) *Handler {
+	return &Handler{
+		service:        service,
+		logger:         logger,
+		requestTimeout: requestTimeout,
+		processingMode: processingMode,
+	}
 }
 
 func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
@@ -48,14 +62,21 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, h.requestTimeout)
 	defer cancel()
 
-	err := h.service.CreateOrder(ctx, input)
+	var err error
+	if h.processingMode.Mode == config.OrderModeAsync {
+		err = h.service.CreateOrderKafka(ctx, input)
+		w.WriteHeader(http.StatusAccepted)
+	} else {
+		err = h.service.CreateOrder(ctx, input)
+		w.WriteHeader(http.StatusCreated)
+	}
+
 	if err != nil {
 		h.logger.Error("failed to create order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(input.ID.String()))
 }
 
@@ -101,7 +122,12 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(order)
+	if h.processingMode.Mode == config.OrderModeAsync {
+		w.Write([]byte("Order send to create queue"))
+	} else {
+		w.Write(order)
+	}
+
 }
 
 func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +141,13 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := requestContext(r, h.requestTimeout)
 	defer cancel()
 
-	err := h.service.UpdateOrder(ctx, input)
+	var err error
+	if h.processingMode.Mode == config.OrderModeAsync {
+		err = h.service.UpdateOrderKafka(ctx, input)
+	} else {
+		err = h.service.UpdateOrder(ctx, input)
+	}
+
 	if err != nil {
 		h.logger.Error("failed to update order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -123,7 +155,43 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Order updated"))
+
+	if h.processingMode.Mode == config.OrderModeAsync {
+		w.Write([]byte("Order send to updated queue"))
+	} else {
+		w.Write([]byte("Order updated"))
+	}
+}
+
+func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
+	idParam := r.PathValue("id")
+	if idParam == "" {
+		h.logger.Error("id is required")
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := requestContext(r, h.requestTimeout)
+	defer cancel()
+
+	var err error
+	if h.processingMode.Mode == config.OrderModeAsync {
+		err = h.service.DeleteOrderKafka(ctx, idParam)
+	} else {
+		err = h.service.DeleteSoftOrder(ctx, idParam)
+	}
+
+	if err != nil {
+		h.logger.Error("failed to delete order", zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if h.processingMode.Mode == config.OrderModeAsync {
+		w.Write([]byte("Order send to delete queue"))
+	} else {
+		w.Write([]byte("Order marked as deleted"))
+	}
 }
 
 func (h *Handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
@@ -139,59 +207,12 @@ func (h *Handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.DeleteOrder(ctx, idParam)
 	if err != nil {
-		h.logger.Error("failed to delete order", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Order deleted"))
-}
-
-func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
-	idParam := r.PathValue("id")
-	if idParam == "" {
-		h.logger.Error("id is required")
-		http.Error(w, "id is required", http.StatusBadRequest)
-		return
-	}
-
-	ctx, cancel := requestContext(r, h.requestTimeout)
-	defer cancel()
-
-	err := h.service.DeleteSoftOrder(ctx, idParam)
-	if err != nil {
 		h.logger.Error("failed to delete soft order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Order marked as deleted"))
-}
-
-func (h *Handler) CreateOrderKafka(w http.ResponseWriter, r *http.Request) {
-	var input model.Order
-
-	if err := decodeRequest(r, &input, h.logger); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if input.ID == uuid.Nil {
-		ID := uuid.New()
-		input.ID = ID
-	}
-
-	ctx, cancel := requestContext(r, h.requestTimeout)
-	defer cancel()
-
-	err := h.service.CreateOrderKafka(ctx, input)
-	if err != nil {
-		h.logger.Error("failed to create order kafka", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusAccepted)
-	w.Write([]byte("Order created kafka"))
+	w.Write([]byte("Order deleted"))
 }
 
 func requestContext(r *http.Request, requestTimeout time.Duration) (context.Context, context.CancelFunc) {

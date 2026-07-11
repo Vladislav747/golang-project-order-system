@@ -12,7 +12,9 @@ import (
 // CreateOrderHandler — контракт бизнес-логики обработки входящего сообщения.
 // Consumer не знает про service/repository — только вызывает этот интерфейс.
 type CreateOrderHandler interface {
-	HandleCreateOrder(ctx context.Context, msg CreateOrderMessage) error
+	HandleCreateOrder(ctx context.Context, msg OrderCommandMessage) error
+	HandleUpdateOrder(ctx context.Context, msg OrderCommandMessage) error
+	HandleDeleteOrder(ctx context.Context, msg OrderCommandMessage) error
 }
 
 // Consumer оборачивает sarama.ConsumerGroup и запускает чтение из топика.
@@ -43,16 +45,36 @@ func (h *consumerGroupHandler) ConsumeClaim(
 	claim sarama.ConsumerGroupClaim,
 ) error {
 	for msg := range claim.Messages() {
-		var msgData CreateOrderMessage
+		var msgData OrderCommandMessage
 		if err := json.Unmarshal(msg.Value, &msgData); err != nil {
 			h.logger.Error("failed to unmarshal message", zap.Error(err))
 			continue // битое сообщение: offset не коммитим — sarama прочитает его снова
 		}
 
 		// session.Context() отменяется при shutdown/rebalance — передаём его в handler.
-		if err := h.handler.HandleCreateOrder(session.Context(), msgData); err != nil {
-			h.logger.Error("failed to handle message", zap.Error(err))
-			continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
+
+		var err error
+
+		switch msgData.Action {
+		case "created":
+			if err = h.handler.HandleCreateOrder(session.Context(), msgData); err != nil {
+				h.logger.Error("failed to handle message", zap.Error(err))
+				continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
+			}
+		case "updated":
+			if err = h.handler.HandleUpdateOrder(session.Context(), msgData); err != nil {
+				h.logger.Error("failed to handle message", zap.Error(err))
+				continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
+			}
+		case "deleted":
+			fmt.Println("deleted order", msgData)
+			if err = h.handler.HandleDeleteOrder(session.Context(), msgData); err != nil {
+				h.logger.Error("failed to handle message", zap.Error(err))
+				continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
+			}
+		default:
+			h.logger.Error("unknown action", zap.String("action", msgData.Action))
+			continue
 		}
 
 		// MarkMessage помечает offset как обработанный (аналог CommitMessages в kafka-go).

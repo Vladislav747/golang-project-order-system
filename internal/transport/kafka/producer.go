@@ -33,7 +33,7 @@ func NewProducer(brokers []string, topic string, logger *zap.Logger) (*Producer,
 	}, nil
 }
 
-func (p *Producer) SendMessage(message CreateOrderMessage) error {
+func (p *Producer) SendMessage(message OrderCommandMessage) error {
 
 	data, err := json.Marshal(message)
 	if err != nil {

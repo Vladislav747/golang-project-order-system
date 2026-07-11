@@ -45,7 +45,7 @@ func main() {
 	svc := mustInitService(pool, producer, logger)
 	consumer, cancel, consumerWG := mustStartConsumer(svc, logger)
 
-	orderHandler := orderHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
+	orderHandler := orderHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout, cfg.ProcessingMode)
 	orderEventHandler := orderEventHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
 
 	// Регистрируем маршруты

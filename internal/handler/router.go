@@ -12,7 +12,6 @@ import (
 func RegisterRoutes(mux *http.ServeMux, orderHandler *orderhandler.Handler, orderEventHandler *ordereventhandler.Handler) {
 	mux.HandleFunc("GET /orders", InstrumentMetricsHandler("GET", "/orders", orderHandler.GetOrders))
 	mux.HandleFunc("POST /order", InstrumentMetricsHandler("POST", "/order", orderHandler.CreateOrder))
-	mux.HandleFunc("POST /order/async", InstrumentMetricsHandler("POST", "/order/async", orderHandler.CreateOrderKafka))
 
 	mux.HandleFunc("GET /orders/{id}", InstrumentMetricsHandler("GET", "/orders/{id}", orderHandler.GetOrder))
 	mux.HandleFunc("PATCH /orders/{id}", InstrumentMetricsHandler("PATCH", "/orders/{id}", orderHandler.UpdateOrder))

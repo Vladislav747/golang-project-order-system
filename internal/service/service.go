@@ -37,7 +37,12 @@ type Service struct {
 	logger               *zap.Logger
 }
 
-func NewService(repositoryOrder RepositoryOrder, repositoryOrderEvent RepositoryOrderEvent, txManager TxManager, producer *kafka.Producer, logger *zap.Logger) *Service {
+func NewService(
+	repositoryOrder RepositoryOrder,
+	repositoryOrderEvent RepositoryOrderEvent,
+	txManager TxManager, producer *kafka.Producer,
+	logger *zap.Logger,
+) *Service {
 	return &Service{
 		repositoryOrder:      repositoryOrder,
 		repositoryOrderEvent: repositoryOrderEvent,

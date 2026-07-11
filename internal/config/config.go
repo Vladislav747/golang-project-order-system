@@ -9,9 +9,23 @@ import (
 )
 
 type Config struct {
-	Env        string     `yaml:"env"`
-	Port       int        `yaml:"port"`
-	HttpServer HttpServer `yaml:"http_server"`
+	Env            string         `yaml:"env"`
+	Port           int            `yaml:"port"`
+	HttpServer     HttpServer     `yaml:"http_server"`
+	ProcessingMode ProcessingMode `yaml:"processing_mode"`
+}
+
+type ProcessingMode struct {
+	Mode string `yaml:"mode"`
+}
+
+const (
+	OrderModeSync  = "sync"
+	OrderModeAsync = "async"
+)
+
+func (c ProcessingMode) IsAsync() bool {
+	return c.Mode == OrderModeAsync
 }
 
 type HttpServer struct {

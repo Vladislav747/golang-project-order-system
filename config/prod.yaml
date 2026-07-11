@@ -1,5 +1,7 @@
 env: "prod" #local, stg, prod
 port: 8082
+processing_mode: 
+  mode: "async" # sync, async
 http_server:
   read_timeout: 10s
   write_timeout: 10s
