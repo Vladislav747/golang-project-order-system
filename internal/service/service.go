@@ -113,6 +113,7 @@ func (s *Service) DeleteOrder(ctx context.Context, id string) error {
 		event, err := buildOrderEvent(orderIDUUID, model.EventDeleted, model.SourceHTTPSync, nil)
 		if err != nil {
 			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
 		}
 		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})
@@ -135,6 +136,7 @@ func (s *Service) DeleteSoftOrder(ctx context.Context, id string) error {
 		event, err := buildOrderEvent(orderIDUUID, model.EventDeleted, model.SourceHTTPSync, nil)
 		if err != nil {
 			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
 		}
 		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})

@@ -3,6 +3,7 @@ package Handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
+	"github.com/Vladislav747/golang-project-order-system/internal/pkg/utils"
 )
 
 type Service interface {
@@ -49,7 +51,7 @@ func NewHandler(
 func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
-	if err := decodeRequest(r, &input, h.logger); err != nil {
+	if err := h.decodeRequest(r, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -59,7 +61,7 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		input.ID = ID
 	}
 
-	ctx, cancel := requestContext(r, h.requestTimeout)
+	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
 	defer cancel()
 
 	var err error
@@ -81,7 +83,7 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := requestContext(r, h.requestTimeout)
+	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
 	defer cancel()
 	res, err := h.service.GetOrders(ctx)
 	if err != nil {
@@ -106,10 +108,14 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	ctx, cancel := requestContext(r, h.requestTimeout)
+	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
 	defer cancel()
 	res, err := h.service.GetOrder(ctx, idParam)
 	if err != nil {
+		if errors.Is(err, model.ErrOrderNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -133,7 +139,7 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	var input model.Order
 
-	if err := decodeRequest(r, &input, h.logger); err != nil {
+	if err := h.decodeRequest(r, &input); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -144,7 +150,7 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := requestContext(r, h.requestTimeout)
+	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
 	defer cancel()
 
 	var err error
@@ -177,7 +183,7 @@ func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := requestContext(r, h.requestTimeout)
+	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
 	defer cancel()
 
 	var err error
@@ -208,7 +214,7 @@ func (h *Handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := requestContext(r, h.requestTimeout)
+	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
 	defer cancel()
 
 	err := h.service.DeleteOrder(ctx, idParam)
@@ -221,14 +227,9 @@ func (h *Handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Order deleted"))
 }
 
-func requestContext(r *http.Request, requestTimeout time.Duration) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
-	return ctx, cancel
-}
-
-func decodeRequest(r *http.Request, input *model.Order, logger *zap.Logger) error {
+func (h *Handler) decodeRequest(r *http.Request, input *model.Order) error {
 	if err := json.NewDecoder(r.Body).Decode(input); err != nil {
-		logger.Error("failed to decode request body", zap.Error(err))
+		h.logger.Error("failed to decode request body", zap.Error(err))
 		return err
 	}
 	return nil

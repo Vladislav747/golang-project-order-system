@@ -67,6 +67,7 @@ func (s *Service) CreateOrderFromKafka(ctx context.Context, order model.Order) e
 		event, err := buildOrderEvent(order.ID, model.EventCreated, model.SourceKafka, nil)
 		if err != nil {
 			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
 		}
 		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})
@@ -81,6 +82,7 @@ func (s *Service) UpdateOrderFromKafka(ctx context.Context, order model.Order) e
 		event, err := buildOrderEvent(order.ID, model.EventUpdated, model.SourceKafka, order)
 		if err != nil {
 			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
 		}
 		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})
@@ -101,6 +103,7 @@ func (s *Service) DeleteOrderFromKafka(ctx context.Context, id string) error {
 		event, err := buildOrderEvent(orderIDUUID, model.EventDeleted, model.SourceKafka, nil)
 		if err != nil {
 			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
 		}
 		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
 	})

@@ -19,11 +19,11 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
 	orderHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
 	orderEventHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order_event"
+	"github.com/Vladislav747/golang-project-order-system/internal/pkg/logger"
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
-	"github.com/Vladislav747/golang-project-order-system/internal/pkg/logger"
 )
 
 func main() {

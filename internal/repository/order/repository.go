@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -67,6 +68,9 @@ func (r *repository) GetOrder(ctx context.Context, id string) (model.Order, erro
 
 	order, err := pgx.CollectOneRow(rows, r.scanOrder)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Order{}, model.ErrOrderNotFound
+		}
 		r.logger.Error("failed to collect order from row", zap.Error(err))
 		return model.Order{}, err
 	}

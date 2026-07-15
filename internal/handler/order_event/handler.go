@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
+	"github.com/Vladislav747/golang-project-order-system/internal/pkg/utils"
 )
 
 type Service interface {
@@ -34,7 +35,7 @@ func NewHandler(service Service, logger *zap.Logger, requestTimeout time.Duratio
 }
 
 func (h *Handler) GetOrderEvents(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := requestContext(r, h.requestTimeout)
+	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
 	defer cancel()
 	res, err := h.service.GetOrderEvents(ctx)
 	if err != nil {
@@ -50,9 +51,4 @@ func (h *Handler) GetOrderEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(orders)
-}
-
-func requestContext(r *http.Request, requestTimeout time.Duration) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
-	return ctx, cancel
 }

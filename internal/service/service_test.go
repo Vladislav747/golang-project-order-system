@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,6 +13,7 @@ import (
 )
 
 func TestNewService(t *testing.T) {
+	t.Parallel()
 	repoOrder, repoEvent, _, _ := createMocks(t)
 	svc := NewService(repoOrder, repoEvent, nil, nil, zap.NewNop())
 
@@ -23,7 +23,8 @@ func TestNewService(t *testing.T) {
 }
 
 func TestCreateOrder_RepositoryCalled(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
+	ctx := t.Context()
 
 	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
 
@@ -52,7 +53,8 @@ func TestCreateOrder_RepositoryCalled(t *testing.T) {
 }
 
 func TestGetOrders_RepositoryCalled(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
+	ctx := t.Context()
 
 	repoOrder, _, _, _ := createMocks(t)
 
@@ -69,7 +71,8 @@ func TestGetOrders_RepositoryCalled(t *testing.T) {
 }
 
 func TestDeleteOrder_RepositoryCalled(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
+	ctx := t.Context()
 
 	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
 
@@ -98,7 +101,8 @@ func TestDeleteOrder_RepositoryCalled(t *testing.T) {
 }
 
 func TestUpdateOrder_RepositoryCalled(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
+	ctx := t.Context()
 
 	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
 
@@ -127,7 +131,8 @@ func TestUpdateOrder_RepositoryCalled(t *testing.T) {
 }
 
 func TestGetOrder_RepositoryCalled(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
+	ctx := t.Context()
 
 	repoOrder, _, _, _ := createMocks(t)
 
@@ -143,7 +148,6 @@ func TestGetOrder_RepositoryCalled(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expected, order)
 }
-
 
 func createMocks(t *testing.T) (*mocks.MockRepositoryOrder, *mocks.MockRepositoryOrderEvent, *mocks.MockTxManager, *mocks.MockTx) {
 	t.Helper()

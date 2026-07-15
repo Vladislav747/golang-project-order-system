@@ -2,10 +2,13 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var ErrOrderNotFound = errors.New("order not found")
 
 type Order struct {
 	ID          uuid.UUID       `json:"id"`
