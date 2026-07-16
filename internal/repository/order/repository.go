@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
@@ -43,7 +42,7 @@ func (r *repository) GetOrders(ctx context.Context) ([]model.Order, error) {
 		return nil, err
 	}
 
-	orders, err := pgx.CollectRows(rows, r.scanOrder)
+	orders, err := pgx.CollectRows(rows, pgx.RowToStructByName[model.Order])
 	if err != nil {
 		r.logger.Error("failed to collect orders from rows", zap.Error(err))
 		return nil, err
@@ -66,7 +65,7 @@ func (r *repository) GetOrder(ctx context.Context, id string) (model.Order, erro
 		return model.Order{}, err
 	}
 
-	order, err := pgx.CollectOneRow(rows, r.scanOrder)
+	order, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[model.Order])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Order{}, model.ErrOrderNotFound
@@ -116,33 +115,4 @@ func (r *repository) DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) 
 		return err
 	}
 	return nil
-}
-
-// helper function to scan order from row
-func (r *repository) scanOrder(row pgx.CollectableRow) (model.Order, error) {
-	var order model.Order
-	var deletedAt pgtype.Timestamptz
-
-	err := row.Scan(
-		&order.ID,
-		&order.CustomerID,
-		&order.Status,
-		&order.TotalAmount,
-		&order.Currency,
-		&order.Items,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-		&deletedAt,
-	)
-	if err != nil {
-		r.logger.Error("failed to scan order from row", zap.Error(err))
-		return model.Order{}, err
-	}
-
-	if deletedAt.Valid {
-		t := deletedAt.Time
-		order.DeletedAt = &t
-	}
-
-	return order, nil
 }

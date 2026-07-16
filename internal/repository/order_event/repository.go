@@ -42,27 +42,10 @@ func (r *repository) GetOrderEvents(ctx context.Context) ([]model.OrderEvent, er
 		r.logger.Error("failed to get order events in repository", zap.Error(err))
 		return nil, err
 	}
-	events, err := pgx.CollectRows(rows, r.scanOrderEvent)
+	events, err := pgx.CollectRows(rows, pgx.RowToStructByName[model.OrderEvent])
 	if err != nil {
 		r.logger.Error("failed to collect events from rows", zap.Error(err))
 		return nil, err
 	}
 	return events, nil
-}
-
-func (r *repository) scanOrderEvent(row pgx.CollectableRow) (model.OrderEvent, error) {
-	var event model.OrderEvent
-	err := row.Scan(
-		&event.ID,
-		&event.OrderID,
-		&event.EventType,
-		&event.Source,
-		&event.Payload,
-		&event.CreatedAt,
-	)
-	if err != nil {
-		r.logger.Error("failed to scan event from row", zap.Error(err))
-		return model.OrderEvent{}, err
-	}
-	return event, nil
 }
