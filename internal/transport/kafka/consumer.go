@@ -72,7 +72,7 @@ func (h *consumerGroupHandler) ConsumeClaim(
 				continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
 			}
 		default:
-			h.logger.Error("unknown action", zap.String("action", msgData.Action))
+			h.logger.Error("unknown action", zap.Any("action", msgData.Action))
 			continue
 		}
 
