@@ -56,18 +56,17 @@ func (h *consumerGroupHandler) ConsumeClaim(
 		var err error
 
 		switch msgData.Action {
-		case "created":
+		case OrderActionCreated:
 			if err = h.handler.HandleCreateOrder(session.Context(), msgData); err != nil {
 				h.logger.Error("failed to handle message", zap.Error(err))
 				continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
 			}
-		case "updated":
+		case OrderActionUpdated:
 			if err = h.handler.HandleUpdateOrder(session.Context(), msgData); err != nil {
 				h.logger.Error("failed to handle message", zap.Error(err))
 				continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
 			}
-		case "deleted":
-			fmt.Println("deleted order", msgData)
+		case OrderActionDeleted:
 			if err = h.handler.HandleDeleteOrder(session.Context(), msgData); err != nil {
 				h.logger.Error("failed to handle message", zap.Error(err))
 				continue // при ошибке обработки offset не коммитим — сообщение будет прочитано снова
