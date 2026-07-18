@@ -40,7 +40,7 @@ docker-compose-exec-postgres-psql:
 
 # Integration-тесты (файлы с //go:build integration).
 test-integration:
-	go test ./... -count=1 -v -tags=integration
+	go test ./... -v -tags=integration
 
 service-test:
 	go test ./internal/service/ -v
