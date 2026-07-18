@@ -51,15 +51,3 @@ func TestCreateOrder_WithCheckDatabase(t *testing.T) {
 	}
 	require.True(t, found, "created event not found")
 }
-
-func TestUpdateOrder_WithCheckDatabase(t *testing.T) {
-	pool := setupPostgres(t)
-	ctx := t.Context()
-	logger := zap.NewNop()
-	svc := service.NewService(
-		repositoryOrder.NewRepository(pool, logger),
-		repositoryOrderEvent.NewRepository(pool, logger),
-		pool, // TxManager: у *pgxpool.Pool есть Begin
-		nil,
-		logger,
-	}
