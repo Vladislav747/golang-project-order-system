@@ -1,5 +1,5 @@
 # PHONY - тут игнорирует ошибки
-.PHONY: migrate dev-up dev-down prod-up prod-down build local-run rebuild-go-app-docker docker-compose-exec-postgres-psql
+.PHONY: migrate dev-up dev-down prod-up prod-down build local-run rebuild-go-app-docker docker-compose-exec-postgres-psql test-integration service-test
 
 DATABASE_URL ?= postgres://orders:orders@localhost:5432/orders?sslmode=disable
 
@@ -36,6 +36,11 @@ rebuild-go-app-docker:
 
 docker-compose-exec-postgres-psql:
 	docker compose exec postgres psql -U orders -d orders -c "\dt"
+
+
+# Integration-тесты (файлы с //go:build integration).
+test-integration:
+	go test ./... -count=1 -v -tags=integration
 
 service-test:
 	go test ./internal/service/ -v
