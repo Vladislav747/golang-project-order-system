@@ -65,7 +65,7 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var err error
-	if h.processingMode.Mode == config.OrderModeAsync {
+	if h.processingMode.IsAsync() {
 		err = h.service.CreateOrderKafka(ctx, input)
 		w.WriteHeader(http.StatusAccepted)
 	} else {
@@ -128,12 +128,7 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if h.processingMode.Mode == config.OrderModeAsync {
-		w.Write([]byte("Order send to create queue"))
-	} else {
-		w.Write(order)
-	}
-
+	w.Write(order)
 }
 
 func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +149,7 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var err error
-	if h.processingMode.Mode == config.OrderModeAsync {
+	if h.processingMode.IsAsync() {
 		err = h.service.UpdateOrderKafka(ctx, input)
 	} else {
 		err = h.service.UpdateOrder(ctx, input)
@@ -168,7 +163,7 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	if h.processingMode.Mode == config.OrderModeAsync {
+	if h.processingMode.IsAsync() {
 		w.Write([]byte("Order send to updated queue"))
 	} else {
 		w.Write([]byte("Order updated"))
@@ -187,7 +182,7 @@ func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var err error
-	if h.processingMode.Mode == config.OrderModeAsync {
+	if h.processingMode.IsAsync() {
 		err = h.service.DeleteOrderKafka(ctx, idParam)
 	} else {
 		err = h.service.DeleteSoftOrder(ctx, idParam)
@@ -199,7 +194,7 @@ func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.processingMode.Mode == config.OrderModeAsync {
+	if h.processingMode.IsAsync() {
 		w.Write([]byte("Order send to delete queue"))
 	} else {
 		w.Write([]byte("Order marked as deleted"))

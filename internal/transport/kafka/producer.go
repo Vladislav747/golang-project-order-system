@@ -20,7 +20,6 @@ func NewProducer(brokers []string, topic string, logger *zap.Logger) (*Producer,
 	config.Version = sarama.V2_8_0_0
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
-
 	if err != nil {
 		logger.Error("failed to create producer", zap.Error(err))
 		return nil, err

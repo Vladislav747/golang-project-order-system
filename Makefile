@@ -42,6 +42,9 @@ docker-compose-exec-postgres-psql:
 test-integration:
 	go test ./... -v -tags=integration
 
+test-e2e:
+	go test ./tests/e2e/ -count=1 -v -tags=e2e
+
 service-test:
 	go test ./internal/service/ -v
 

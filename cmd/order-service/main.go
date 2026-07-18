@@ -4,15 +4,12 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
@@ -29,16 +26,16 @@ import (
 func main() {
 	cfg, logger := mustInitConfigAndLogger()
 
-	pool := mustInitPool(logger)
+	pool := mustInitPool(cfg, logger)
 
 	defer pool.Close()
 
-	producer, err := mustInitProducer(logger)
+	producer, err := mustInitProducer(cfg, logger)
 	if err != nil {
 		log.Panicf("failed to create producer %v", zap.Error(err))
 	}
 	svc := mustInitService(pool, producer, logger)
-	consumer, cancel, consumerWG := mustStartConsumer(svc, logger)
+	consumer, cancel, consumerWG := mustStartConsumer(cfg, svc, logger)
 
 	orderHandler := orderHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout, cfg.ProcessingMode)
 	orderEventHandler := orderEventHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
@@ -114,10 +111,6 @@ func gracefulShutdown(
 }
 
 func mustInitConfigAndLogger() (*config.Config, *zap.Logger) {
-	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
-		log.Fatal("Error loading .env file: ", err)
-	}
-
 	cfg := config.MustLoad()
 
 	logger := logger.MustNew(cfg.Env)
@@ -130,13 +123,8 @@ func mustInitConfigAndLogger() (*config.Config, *zap.Logger) {
 	return cfg, logger
 }
 
-func mustInitPool(logger *zap.Logger) *pgxpool.Pool {
-	databaseUrl := os.Getenv("DATABASE_URL")
-	if databaseUrl == "" {
-		log.Panicf("DATABASE_URL is not set: %v", databaseUrl)
-	}
-
-	pool, err := pgxpool.New(context.Background(), databaseUrl)
+func mustInitPool(cfg *config.Config, logger *zap.Logger) *pgxpool.Pool {
+	pool, err := pgxpool.New(context.Background(), cfg.Database.URL)
 	if err != nil {
 		log.Panicf("failed to create pool: %v", err)
 	}
@@ -148,10 +136,10 @@ func mustInitPool(logger *zap.Logger) *pgxpool.Pool {
 	return pool
 }
 
-func mustInitProducer(logger *zap.Logger) (*kafka.Producer, error) {
+func mustInitProducer(cfg *config.Config, logger *zap.Logger) (*kafka.Producer, error) {
 	producer, err := kafka.NewProducer(
-		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
-		os.Getenv("KAFKA_TOPIC_ORDERS"),
+		cfg.Kafka.Brokers,
+		cfg.Kafka.TopicOrders,
 		logger,
 	)
 	return producer, err
@@ -163,11 +151,11 @@ func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.L
 	return service.NewService(repositoryOrder, repositoryOrderEvent, pool, producer, logger)
 }
 
-func mustStartConsumer(svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {
+func mustStartConsumer(cfg *config.Config, svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {
 	consumer, err := kafka.NewConsumer(
-		strings.Split(os.Getenv("KAFKA_BROKERS"), ","),
-		os.Getenv("KAFKA_TOPIC_ORDERS"),
-		os.Getenv("KAFKA_CONSUMER_GROUP"),
+		cfg.Kafka.Brokers,
+		cfg.Kafka.TopicOrders,
+		cfg.Kafka.ConsumerGroup,
 		svc,
 		logger,
 	)

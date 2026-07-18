@@ -2,10 +2,12 @@ package config
 
 import (
 	"flag"
+	"log"
 	"os"
 	"time"
 
 	yaml "github.com/goccy/go-yaml"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -13,6 +15,8 @@ type Config struct {
 	Port           int            `yaml:"port"`
 	HttpServer     HttpServer     `yaml:"http_server"`
 	ProcessingMode ProcessingMode `yaml:"processing_mode"`
+	Database       DatabaseConfig `yaml:"-"`
+	Kafka          KafkaConfig    `yaml:"-"`
 }
 
 type ProcessingMode struct {
@@ -37,13 +41,22 @@ type HttpServer struct {
 }
 
 func MustLoad() *Config {
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Fatal("error loading .env file: ", err)
+	}
 
 	path := fetchConfigPath()
 	if path == "" {
 		panic("config path is empty")
 	}
 
-	return MustLoadByPath(path)
+	cfg := MustLoadByPath(path)
+	loadEnv(cfg)
+	if err := cfg.validateEnv(); err != nil {
+		log.Fatal(err)
+	}
+
+	return cfg
 }
 
 // fetchConfigPath fetches the config path from the command line arguments.
