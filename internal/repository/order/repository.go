@@ -56,7 +56,7 @@ func (r *repository) GetOrder(ctx context.Context, id string) (model.Order, erro
         SELECT id, customer_id, status, total_amount, currency, items,
                created_at, updated_at, deleted_at
         FROM orders
-        WHERE id = $1 AND deleted_at IS NULL
+        WHERE id = $1
     `
 
 	rows, err := r.pool.Query(ctx, sqlQuery, id)

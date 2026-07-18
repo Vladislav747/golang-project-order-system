@@ -105,3 +105,50 @@ func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
 	require.True(t, created, "created event not found")
 	require.True(t, updated, "updated event not found")
 }
+
+
+func TestSoftDeleteOrder_CheckEventsInDatabase(t *testing.T) {
+	pool := setupPostgres(t)
+	ctx := t.Context()
+	logger := zap.NewNop()
+	svc := service.NewService(
+		repositoryOrder.NewRepository(pool, logger),
+		repositoryOrderEvent.NewRepository(pool, logger),
+		pool, // TxManager: у *pgxpool.Pool есть Begin
+		nil,
+		logger,
+	)
+	order := model.Order{
+		ID:          uuid.New(),
+		CustomerID:  uuid.New(),
+		Status:      "pending",
+		TotalAmount: 1000,
+		Currency:    "USD",
+		Items:       json.RawMessage(`[]`),
+	}
+	require.NoError(t, svc.CreateOrder(ctx, order))
+	require.NoError(t, svc.DeleteSoftOrder(ctx, order.ID.String()))
+	got, err := svc.GetOrder(ctx, order.ID.String())
+	require.NoError(t, err)
+	require.Equal(t, order.ID, got.ID)
+	require.Equal(t, "deleted", got.Status)
+	events, err := svc.GetOrderEvents(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, events)
+	var created, deleted bool
+	for _, e := range events {
+		if e.OrderID != order.ID {
+			continue
+		}
+		switch e.EventType {
+		case model.EventCreated:
+			created = true
+			require.Equal(t, model.SourceHTTPSync, e.Source)
+		case model.EventDeleted:
+			deleted = true
+			require.Equal(t, model.SourceHTTPSync, e.Source)
+		}
+	}
+	require.True(t, created, "created event not found")
+	require.True(t, deleted, "updated event not found")
+}
