@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 
@@ -25,20 +24,15 @@ import (
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
-	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
 
+// OrderE2ESuite — sync e2e без моков: реальный Postgres (testcontainers) + HTTP.
 type OrderE2ESuite struct {
 	suite.Suite
 
-	pool     *pgxpool.Pool
-	mux      *http.ServeMux
-	svc      *service.Service
-	producer *kafka.Producer
-	consumer *kafka.Consumer
-
-	consumerCancel context.CancelFunc
-	consumerWG     sync.WaitGroup
+	pool *pgxpool.Pool
+	mux  *http.ServeMux
+	svc  *service.Service
 }
 
 func TestOrderE2ESuite(t *testing.T) {
@@ -91,6 +85,16 @@ func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP() {
 
 	s.Require().Equal(http.StatusCreated, createRR.Code)
 	s.Require().Equal(orderID.String(), createRR.Body.String())
+
+	getReq := httptest.NewRequest(http.MethodGet, "/orders/"+orderID.String(), nil)
+	getRR := httptest.NewRecorder()
+	s.mux.ServeHTTP(getRR, getReq)
+	s.Require().Equal(http.StatusOK, getRR.Code)
+
+	var got model.Order
+	s.Require().NoError(json.Unmarshal(getRR.Body.Bytes(), &got))
+	s.Equal(orderID, got.ID)
+	s.Equal("pending", got.Status)
 
 	events, err := s.svc.GetOrderEvents(context.Background())
 	s.Require().NoError(err)
