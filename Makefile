@@ -45,6 +45,9 @@ test-integration:
 test-e2e:
 	go test ./tests/e2e/ -count=1 -v -tags=e2e
 
+test-e2e-async:
+	go test ./tests/e2e/ -count=1 -v -tags=e2e_async
+
 service-test:
 	go test ./internal/service/ -v
 

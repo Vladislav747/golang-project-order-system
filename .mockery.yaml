@@ -1,18 +1,29 @@
 disable-version-string: true
 with-expecter: true
 
+# Дефолты для всех пакетов (можно переопределить на уровне package).
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+filename: "mock_{{.InterfaceName}}.go"
+mockname: "Mock{{.InterfaceName}}"
+
 packages:
-  github.com/Vladislav747/golang-project-order-system/internal/service:
+  # Рекурсивно обходим весь internal — пакеты вручную не перечисляем.
+  github.com/Vladislav747/golang-project-order-system/internal:
     config:
-      dir: internal/service/mocks
-      outpkg: mocks
-    interfaces:
-      RepositoryOrder:
-      RepositoryOrderEvent:
-      TxManager:
+      recursive: true
+      # all: true — НЕ использовать вместе с regex (all перекрывает include/exclude).
+      include-regex: ".*"
+      # Исключаем интерфейсы, для которых моки не нужны.
+      # Service в handler'ах, CreateOrderHandler в kafka — обычно не мокаем.
+      exclude-regex: "^(Service|CreateOrderHandler)$"
+      # Подпакеты, которые не сканируем (опционально):
+      # exclude:
+      #   - mocks
+
+  # Внешние пакеты recursive не подхватит — их указываем отдельно.
   github.com/jackc/pgx/v5:
     config:
       dir: internal/service/mocks
       outpkg: mocks
-    interfaces:
-      Tx:
+      include-regex: "^Tx$"
