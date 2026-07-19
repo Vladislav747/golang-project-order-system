@@ -3,36 +3,22 @@
 package e2e
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap"
 
-	"github.com/Vladislav747/golang-project-order-system/internal/config"
-	"github.com/Vladislav747/golang-project-order-system/internal/handler"
-	orderhandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
-	ordereventhandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order_event"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
-	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
-	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
-	"github.com/Vladislav747/golang-project-order-system/internal/service"
 )
 
-// OrderE2ESuite — sync e2e без моков: реальный Postgres (testcontainers) + HTTP.
+// OrderE2ESuite — black-box e2e против уже запущенного сервиса в sync-режиме.
+// Требует: стек поднят с processing_mode.mode: sync (например config/local.yaml).
 type OrderE2ESuite struct {
 	suite.Suite
-
-	pool *pgxpool.Pool
-	mux  *http.ServeMux
-	svc  *service.Service
+	client *http.Client
 }
 
 func TestOrderE2ESuite(t *testing.T) {
@@ -40,29 +26,8 @@ func TestOrderE2ESuite(t *testing.T) {
 }
 
 func (s *OrderE2ESuite) SetupSuite() {
-	t := s.T()
-	logger := zap.NewNop()
-
-	s.pool = setupPostgres(t)
-
-	s.svc = service.NewService(
-		repositoryOrder.NewRepository(s.pool, logger),
-		repositoryOrderEvent.NewRepository(s.pool, logger),
-		s.pool,
-		nil,
-		logger,
-	)
-
-	orderHandler := orderhandler.NewHandler(
-		s.svc,
-		logger,
-		5*time.Second,
-		config.ProcessingMode{Mode: config.OrderModeSync},
-	)
-	orderEventHandler := ordereventhandler.NewHandler(s.svc, logger, 5*time.Second)
-
-	s.mux = http.NewServeMux()
-	handler.RegisterRoutes(s.mux, orderHandler, orderEventHandler)
+	s.client = &http.Client{Timeout: 10 * time.Second}
+	waitReady(s.T(), s.client)
 }
 
 func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP() {
@@ -75,29 +40,24 @@ func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP() {
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
 	}
-	body, err := json.Marshal(payload)
-	s.Require().NoError(err)
 
-	createReq := httptest.NewRequest(http.MethodPost, "/order", bytes.NewReader(body))
-	createReq.Header.Set("Content-Type", "application/json")
-	createRR := httptest.NewRecorder()
-	s.mux.ServeHTTP(createRR, createReq)
+	code, body := doJSON(s.T(), s.client, http.MethodPost, "/order", payload)
+	s.Require().Equal(http.StatusCreated, code, "body=%s (сервис должен быть в sync)", body)
+	s.Require().Equal(orderID.String(), string(body))
 
-	s.Require().Equal(http.StatusCreated, createRR.Code)
-	s.Require().Equal(orderID.String(), createRR.Body.String())
-
-	getReq := httptest.NewRequest(http.MethodGet, "/orders/"+orderID.String(), nil)
-	getRR := httptest.NewRecorder()
-	s.mux.ServeHTTP(getRR, getReq)
-	s.Require().Equal(http.StatusOK, getRR.Code)
+	code, body = doJSON(s.T(), s.client, http.MethodGet, "/orders/"+orderID.String(), nil)
+	s.Require().Equal(http.StatusOK, code, "body=%s", body)
 
 	var got model.Order
-	s.Require().NoError(json.Unmarshal(getRR.Body.Bytes(), &got))
+	s.Require().NoError(json.Unmarshal(body, &got))
 	s.Equal(orderID, got.ID)
 	s.Equal("pending", got.Status)
 
-	events, err := s.svc.GetOrderEvents(context.Background())
-	s.Require().NoError(err)
+	code, body = doJSON(s.T(), s.client, http.MethodGet, "/order-events", nil)
+	s.Require().Equal(http.StatusOK, code, "body=%s", body)
+
+	var events []model.OrderEvent
+	s.Require().NoError(json.Unmarshal(body, &events))
 
 	var found bool
 	for _, e := range events {

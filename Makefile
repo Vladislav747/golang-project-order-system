@@ -42,11 +42,16 @@ docker-compose-exec-postgres-psql:
 test-integration:
 	go test ./... -v -tags=integration
 
+# E2E — black-box против уже запущенного сервиса (http://127.0.0.1:8080).
+# Sync: config/local.yaml (mode: sync) + make local-run && make test-e2e
+# Async: docker compose up -d --build (prod.yaml mode: async) && make test-e2e-async
+E2E_BASE_URL ?= http://127.0.0.1:8080
+
 test-e2e:
-	go test ./tests/e2e/ -count=1 -v -tags=e2e
+	E2E_BASE_URL=$(E2E_BASE_URL) go test ./tests/e2e/ -count=1 -v -tags=e2e
 
 test-e2e-async:
-	go test ./tests/e2e/ -count=1 -v -tags=e2e_async
+	E2E_BASE_URL=$(E2E_BASE_URL) go test ./tests/e2e/ -count=1 -v -tags=e2e_async
 
 service-test:
 	go test ./internal/service/ -v

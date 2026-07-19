@@ -18,7 +18,7 @@ WORKDIR /app
 COPY --from=builder /order-service ./order-service
 COPY config/prod.yaml ./config/prod.yaml
 
-EXPOSE 8082
+EXPOSE 8080
 
 ENV CONFIG_PATH=/app/config/prod.yaml
 
