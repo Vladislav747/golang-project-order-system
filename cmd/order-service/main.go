@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"strconv"
 	"sync"
@@ -37,8 +38,10 @@ func main() {
 	svc := mustInitService(pool, producer, logger)
 	consumer, cancel, consumerWG := mustStartConsumer(cfg, svc, logger)
 
-	orderHandler := orderHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout, cfg.ProcessingMode)
-	orderEventHandler := orderEventHandler.NewHandler(svc, logger, cfg.HttpServer.RequestTimeout)
+	provider := config.NewProvider(cfg)
+
+	orderHandler := orderHandler.NewHandler(svc, logger, provider)
+	orderEventHandler := orderEventHandler.NewHandler(svc, logger, provider)
 
 	// Регистрируем маршруты
 	mux := http.NewServeMux()
@@ -54,6 +57,20 @@ func main() {
 		// IdleTimeout — максимальное время ожидания следующего запроса при keep-alive соединении
 		IdleTimeout: cfg.HttpServer.IdleTimeout,
 	}
+
+	watchCtx, watchCancel := context.WithCancel(context.Background())
+	go func() {
+		path := os.Getenv("CONFIG_PATH")
+		if path == "" {
+			// если тут делать панику и если его не перехватил recover, то будет паника в main
+			logger.Error("CONFIG_PATH is not set")
+			return
+		}
+		if err := provider.StartWatch(watchCtx, path, logger); err != nil {
+			logger.Error("config watch stopped", zap.Error(err))
+		}
+	}()
+
 	// Запускаем сервер в отдельной горутине
 	go func() {
 		logger.Info("server started")
@@ -63,7 +80,7 @@ func main() {
 	}()
 
 	// Запускаем graceful shutdown
-	gracefulShutdown(server, logger, consumer, cancel, consumerWG, producer, cfg)
+	gracefulShutdown(server, logger, consumer, cancel, consumerWG, producer, cfg, watchCancel)
 }
 
 func gracefulShutdown(
@@ -74,6 +91,7 @@ func gracefulShutdown(
 	consumerWG *sync.WaitGroup,
 	producer *kafka.Producer,
 	cfg *config.Config,
+	watchCancel context.CancelFunc,
 ) {
 	// Ждем сигналы прерывания
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -106,6 +124,9 @@ func gracefulShutdown(
 	if err := producer.Close(); err != nil {
 		logger.Error("producer close failed", zap.Error(err))
 	}
+
+	logger.Info("shutting down reload config")
+	watchCancel()
 
 	logger.Info("server stopped")
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -28,23 +27,20 @@ type Service interface {
 }
 
 type Handler struct {
-	service        Service
-	logger         *zap.Logger
-	requestTimeout time.Duration
-	processingMode config.ProcessingMode
+	service  Service
+	logger   *zap.Logger
+	provider *config.Provider
 }
 
 func NewHandler(
 	service Service,
 	logger *zap.Logger,
-	requestTimeout time.Duration,
-	processingMode config.ProcessingMode,
+	provider *config.Provider,
 ) *Handler {
 	return &Handler{
-		service:        service,
-		logger:         logger,
-		requestTimeout: requestTimeout,
-		processingMode: processingMode,
+		service:  service,
+		logger:   logger,
+		provider: provider,
 	}
 }
 
@@ -61,11 +57,12 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		input.ID = ID
 	}
 
-	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
+	cfg := h.provider.Get()
+	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
 
 	var err error
-	if h.processingMode.IsAsync() {
+	if cfg.ProcessingMode.IsAsync() {
 		err = h.service.CreateOrderKafka(ctx, input)
 		w.WriteHeader(http.StatusAccepted)
 	} else {
@@ -83,7 +80,8 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
+	cfg := h.provider.Get()
+	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
 	res, err := h.service.GetOrders(ctx)
 	if err != nil {
@@ -108,7 +106,8 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
+	cfg := h.provider.Get()
+	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
 	res, err := h.service.GetOrder(ctx, idParam)
 	if err != nil {
@@ -145,11 +144,12 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
+	cfg := h.provider.Get()
+	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
 
 	var err error
-	if h.processingMode.IsAsync() {
+	if cfg.ProcessingMode.IsAsync() {
 		err = h.service.UpdateOrderKafka(ctx, input)
 	} else {
 		err = h.service.UpdateOrder(ctx, input)
@@ -163,7 +163,7 @@ func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	if h.processingMode.IsAsync() {
+	if cfg.ProcessingMode.IsAsync() {
 		w.Write([]byte("Order send to updated queue"))
 	} else {
 		w.Write([]byte("Order updated"))
@@ -178,11 +178,12 @@ func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
+	cfg := h.provider.Get()
+	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
 
 	var err error
-	if h.processingMode.IsAsync() {
+	if cfg.ProcessingMode.IsAsync() {
 		err = h.service.DeleteOrderKafka(ctx, idParam)
 	} else {
 		err = h.service.DeleteSoftOrder(ctx, idParam)
@@ -194,7 +195,7 @@ func (h *Handler) DeleteSoftOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.processingMode.IsAsync() {
+	if cfg.ProcessingMode.IsAsync() {
 		w.Write([]byte("Order send to delete queue"))
 	} else {
 		w.Write([]byte("Order marked as deleted"))
@@ -209,7 +210,8 @@ func (h *Handler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
+	cfg := h.provider.Get()
+	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
 
 	err := h.service.DeleteOrder(ctx, idParam)

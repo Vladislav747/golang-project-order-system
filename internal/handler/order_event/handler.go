@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"go.uber.org/zap"
 
+	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 	"github.com/Vladislav747/golang-project-order-system/internal/pkg/utils"
 )
@@ -25,17 +25,18 @@ type Service interface {
 }
 
 type Handler struct {
-	service        Service
-	logger         *zap.Logger
-	requestTimeout time.Duration
+	service  Service
+	logger   *zap.Logger
+	provider *config.Provider
 }
 
-func NewHandler(service Service, logger *zap.Logger, requestTimeout time.Duration) *Handler {
-	return &Handler{service: service, logger: logger, requestTimeout: requestTimeout}
+func NewHandler(service Service, logger *zap.Logger, provider *config.Provider) *Handler {
+	return &Handler{service: service, logger: logger, provider: provider}
 }
 
 func (h *Handler) GetOrderEvents(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := utils.RequestContext(r, h.requestTimeout)
+	cfg := h.provider.Get()
+	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
 	res, err := h.service.GetOrderEvents(ctx)
 	if err != nil {

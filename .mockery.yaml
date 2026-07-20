@@ -15,7 +15,6 @@ packages:
       # all: true — НЕ использовать вместе с regex (all перекрывает include/exclude).
       include-regex: ".*"
       # Исключаем интерфейсы, для которых моки не нужны.
-      # Service в handler'ах, CreateOrderHandler в kafka — обычно не мокаем.
       exclude-regex: "^(Service|CreateOrderHandler)$"
       # Подпакеты, которые не сканируем (опционально):
       # exclude:
