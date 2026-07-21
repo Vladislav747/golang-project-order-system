@@ -1,5 +1,4 @@
 env: "prod" #local, stg, prod
-port: 8080
 processing_mode: 
   mode: "async" # sync, async
 http_server:

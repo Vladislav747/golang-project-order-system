@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -27,9 +28,19 @@ func loadEnv(cfg *Config) {
 		TopicOrders:   os.Getenv("KAFKA_TOPIC_ORDERS"),
 		ConsumerGroup: os.Getenv("KAFKA_CONSUMER_GROUP"),
 	}
+
+	if port := os.Getenv("PORT"); port != "" {
+		p, err := strconv.Atoi(port)
+		if err == nil {
+			cfg.Port = p
+		}
+	}
 }
 
 func (cfg *Config) validateEnv() error {
+	if cfg.Port <= 0 {
+		return fmt.Errorf("PORT is not set or invalid")
+	}
 	if cfg.Database.URL == "" {
 		return fmt.Errorf("DATABASE_URL is not set")
 	}

@@ -12,7 +12,7 @@ import (
 
 type Config struct {
 	Env            string         `yaml:"env"`
-	Port           int            `yaml:"port"`
+	Port           int            `yaml:"-"` // только из PORT env
 	HttpServer     HttpServer     `yaml:"http_server"`
 	ProcessingMode ProcessingMode `yaml:"processing_mode"`
 	Database       DatabaseConfig `yaml:"-"`
