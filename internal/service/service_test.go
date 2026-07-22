@@ -16,8 +16,7 @@ import (
 
 func TestNewService(t *testing.T) {
 	t.Parallel()
-	repoOrder, repoEvent, _, _ := createMocks(t)
-	svc := NewService(repoOrder, repoEvent, nil, nil, zap.NewNop())
+	_, _, _, _, svc := createMocks(t)
 
 	if svc == nil {
 		t.Fatal("expected service instance")
@@ -28,7 +27,7 @@ func TestCreateOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
+	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
 
 	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
@@ -48,8 +47,6 @@ func TestCreateOrder_RepositoryCalled(t *testing.T) {
 		})).
 		Return(nil)
 
-	svc := NewService(repoOrder, repoEvent, txManager, nil, zap.NewNop())
-
 	err := svc.CreateOrder(ctx, order)
 	require.NoError(t, err)
 }
@@ -58,13 +55,11 @@ func TestGetOrders_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, _, _, _ := createMocks(t)
+	repoOrder, _, _, _, svc := createMocks(t)
 
 	repoOrder.EXPECT().
 		GetOrders(mock.Anything).
 		Return([]model.Order{{Status: "pending"}}, nil)
-
-	svc := NewService(repoOrder, nil, nil, nil, zap.NewNop())
 
 	orders, err := svc.GetOrders(ctx)
 	require.NoError(t, err)
@@ -76,7 +71,7 @@ func TestDeleteOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
+	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
 
 	orderID := "6ba7b810-9dad-11d1-80b4-00c04fd43023"
 
@@ -96,8 +91,6 @@ func TestDeleteOrder_RepositoryCalled(t *testing.T) {
 		})).
 		Return(nil)
 
-	svc := NewService(repoOrder, repoEvent, txManager, nil, zap.NewNop())
-
 	err := svc.DeleteOrder(ctx, orderID)
 	require.NoError(t, err)
 }
@@ -106,7 +99,7 @@ func TestUpdateOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, repoEvent, txManager, mockTx := createMocks(t)
+	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
 
 	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
@@ -126,8 +119,6 @@ func TestUpdateOrder_RepositoryCalled(t *testing.T) {
 		})).
 		Return(nil)
 
-	svc := NewService(repoOrder, repoEvent, txManager, nil, zap.NewNop())
-
 	err := svc.UpdateOrder(ctx, order)
 	require.NoError(t, err)
 }
@@ -136,7 +127,7 @@ func TestGetOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, _, _, _ := createMocks(t)
+	repoOrder, _, _, _, svc := createMocks(t)
 
 	expected := model.Order{Status: "pending"}
 
@@ -144,19 +135,25 @@ func TestGetOrder_RepositoryCalled(t *testing.T) {
 		GetOrder(mock.Anything, "123").
 		Return(expected, nil)
 
-	svc := NewService(repoOrder, nil, nil, nil, zap.NewNop())
-
 	order, err := svc.GetOrder(ctx, "123")
 	require.NoError(t, err)
 	require.Equal(t, expected, order)
 }
 
-func createMocks(t *testing.T) (*mocks.MockRepositoryOrder, *mocks.MockRepositoryOrderEvent, *mocks.MockTxManager, *mocks.MockTx) {
+func createMocks(t *testing.T) (
+	*mocks.MockRepositoryOrder,
+	*mocks.MockRepositoryOrderEvent,
+	*mocks.MockTxManager,
+	*mocks.MockTx,
+	*Service,
+) {
 	t.Helper()
 	repoOrder := mocks.NewMockRepositoryOrder(t)
 	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
 	txManager := mocks.NewMockTxManager(t)
 	mockTx := mocks.NewMockTx(t)
 
-	return repoOrder, repoEvent, txManager, mockTx
+	svc := NewService(repoOrder, repoEvent, txManager, nil, zap.NewNop())
+
+	return repoOrder, repoEvent, txManager, mockTx, svc
 }
