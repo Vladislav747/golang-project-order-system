@@ -7,4 +7,3 @@ http_server:
   idle_timeout: 60s
   graceful_shutdown_timeout: 10s
   request_timeout: 10s
-migrations_path: "./migrations"
