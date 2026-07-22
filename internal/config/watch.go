@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (p *Provider) StartWatch(ctx context.Context, path string, logger *zap.Logger) error {
+func (p *Provider) StartWatch(ctx context.Context, path string, logger *zap.Logger, onReload func(*Config)) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
@@ -31,9 +31,8 @@ func (p *Provider) StartWatch(ctx context.Context, path string, logger *zap.Logg
 			if !ok {
 				return nil
 			}
-			// интересуют Write / Create / Rename
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) {
-				p.reload(path, logger)
+				p.reload(path, logger, onReload)
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
@@ -44,7 +43,7 @@ func (p *Provider) StartWatch(ctx context.Context, path string, logger *zap.Logg
 	}
 }
 
-func (p *Provider) reload(path string, logger *zap.Logger) {
+func (p *Provider) reload(path string, logger *zap.Logger, onReload func(*Config)) {
 	cfg, err := LoadByPath(path)
 	if err != nil {
 		logger.Error("failed to load config", zap.Error(err))
@@ -55,8 +54,54 @@ func (p *Provider) reload(path string, logger *zap.Logger) {
 		logger.Error("failed to validate config", zap.Error(err))
 		return
 	}
+
+	old := p.Get()
+	changes := configChanges(old, cfg)
+
 	p.Swap(cfg)
-	logger.Info("config reloaded", zap.String("mode", cfg.ProcessingMode.Mode))
+	if onReload != nil {
+		onReload(cfg)
+	}
+
+	if len(changes) == 0 {
+		return
+	}
+	logger.Info("config reloaded", changes...)
+}
+
+func configChanges(old, new *Config) []zap.Field {
+	if old == nil {
+		return nil
+	}
+
+	var fields []zap.Field
+	add := func(name string, from, to any) {
+		fields = append(fields, zap.Any(name, map[string]any{"from": from, "to": to}))
+	}
+
+	if old.Env != new.Env {
+		add("env", old.Env, new.Env)
+	}
+	if old.ProcessingMode.Mode != new.ProcessingMode.Mode {
+		add("processing_mode", old.ProcessingMode.Mode, new.ProcessingMode.Mode)
+	}
+	if old.HttpServer.ReadTimeout != new.HttpServer.ReadTimeout {
+		add("read_timeout", old.HttpServer.ReadTimeout.String(), new.HttpServer.ReadTimeout.String())
+	}
+	if old.HttpServer.WriteTimeout != new.HttpServer.WriteTimeout {
+		add("write_timeout", old.HttpServer.WriteTimeout.String(), new.HttpServer.WriteTimeout.String())
+	}
+	if old.HttpServer.IdleTimeout != new.HttpServer.IdleTimeout {
+		add("idle_timeout", old.HttpServer.IdleTimeout.String(), new.HttpServer.IdleTimeout.String())
+	}
+	if old.HttpServer.RequestTimeout != new.HttpServer.RequestTimeout {
+		add("request_timeout", old.HttpServer.RequestTimeout.String(), new.HttpServer.RequestTimeout.String())
+	}
+	if old.HttpServer.GracefulShutdownTimeout != new.HttpServer.GracefulShutdownTimeout {
+		add("graceful_shutdown_timeout", old.HttpServer.GracefulShutdownTimeout.String(), new.HttpServer.GracefulShutdownTimeout.String())
+	}
+
+	return fields
 }
 
 func LoadByPath(path string) (*Config, error) {

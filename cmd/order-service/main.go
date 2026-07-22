@@ -66,7 +66,12 @@ func main() {
 			logger.Error("CONFIG_PATH is not set")
 			return
 		}
-		if err := provider.StartWatch(watchCtx, path, logger); err != nil {
+		onReload := func(newCfg *config.Config) {
+			server.ReadTimeout = newCfg.HttpServer.ReadTimeout
+			server.WriteTimeout = newCfg.HttpServer.WriteTimeout
+			server.IdleTimeout = newCfg.HttpServer.IdleTimeout
+		}
+		if err := provider.StartWatch(watchCtx, path, logger, onReload); err != nil {
 			logger.Error("config watch stopped", zap.Error(err))
 		}
 	}()
@@ -80,7 +85,7 @@ func main() {
 	}()
 
 	// Запускаем graceful shutdown
-	gracefulShutdown(server, logger, consumer, cancel, consumerWG, producer, cfg, watchCancel)
+	gracefulShutdown(server, logger, consumer, cancel, consumerWG, producer, provider, watchCancel)
 }
 
 func gracefulShutdown(
@@ -90,7 +95,7 @@ func gracefulShutdown(
 	consumerCancel context.CancelFunc,
 	consumerWG *sync.WaitGroup,
 	producer *kafka.Producer,
-	cfg *config.Config,
+	provider *config.Provider,
 	watchCancel context.CancelFunc,
 ) {
 	// Ждем сигналы прерывания
@@ -102,8 +107,11 @@ func gracefulShutdown(
 	// Останавливаем сервер
 	logger.Info("shutting down server")
 
-	// Устанавливаем timeout для graceful shutdown
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.HttpServer.GracefulShutdownTimeout)
+	// Устанавливаем timeout для graceful shutdown (актуальный из provider)
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		provider.Get().HttpServer.GracefulShutdownTimeout,
+	)
 	defer cancel()
 
 	// Останавливаем сервер
