@@ -2,150 +2,142 @@ package service
 
 import (
 	"context"
-	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
 
-type Repository interface {
+type RepositoryOrder interface {
 	CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error
-	GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, error)
-	GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.Order, error)
+	GetOrders(ctx context.Context) ([]model.Order, error)
+	GetOrder(ctx context.Context, id string) (model.Order, error)
 	UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error
+	DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) error
 	DeleteOrder(ctx context.Context, tx pgx.Tx, id string) error
 }
 
-
-type service struct {
-	repository Repository
-	pool *pgxpool.Pool
-	producer *kafka.Producer
-	logger *slog.Logger
+type RepositoryOrderEvent interface {
+	CreateOrderEvent(ctx context.Context, tx pgx.Tx, order model.OrderEvent) error
+	GetOrderEvents(ctx context.Context) ([]model.OrderEvent, error)
 }
 
-func NewService(repository Repository, pool *pgxpool.Pool, producer *kafka.Producer, logger *slog.Logger) *service {
-	return &service{
-		repository: repository,
-		pool: pool,
-		producer: producer,
-		logger: logger,
+type TxManager interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
+
+type Service struct {
+	repositoryOrder      RepositoryOrder
+	repositoryOrderEvent RepositoryOrderEvent
+	txManager            TxManager
+	producer             *kafka.Producer
+	logger               *zap.Logger
+}
+
+func NewService(
+	repositoryOrder RepositoryOrder,
+	repositoryOrderEvent RepositoryOrderEvent,
+	txManager TxManager, producer *kafka.Producer,
+	logger *zap.Logger,
+) *Service {
+	return &Service{
+		repositoryOrder:      repositoryOrder,
+		repositoryOrderEvent: repositoryOrderEvent,
+		txManager:            txManager,
+		producer:             producer,
+		logger:               logger,
 	}
 }
 
-func (s *service) CreateOrder(ctx context.Context, order model.Order) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+func (s *Service) CreateOrder(ctx context.Context, order model.Order) error {
+	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
 
-	err = s.repository.CreateOrder(ctx, tx, order)
-	if err != nil {
-		return err
-	}
-	tx.Commit(ctx)
-	return nil
+		if err := s.repositoryOrder.CreateOrder(ctx, tx, order); err != nil {
+			return err
+		}
+
+		event, err := buildOrderEvent(order.ID, model.EventCreated, model.SourceHTTPSync, order)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
+		}
+
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
+	})
 }
 
-func (s *service) GetOrders(ctx context.Context) ([]model.Order, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
-
-	res, err := s.repository.GetOrders(ctx, tx)
-	if err != nil {
-		return nil, err
-	}
-	tx.Commit(ctx)
-	return res, nil
+func (s *Service) GetOrders(ctx context.Context) ([]model.Order, error) {
+	// read операция не должна быть в транзакции
+	return s.repositoryOrder.GetOrders(ctx)
 }
 
-func (s *service) GetOrder(ctx context.Context, id string) (model.Order, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return model.Order{}, err
-	}
-	defer tx.Rollback(ctx)
-
-	res, err := s.repository.GetOrder(ctx, tx, id)
-	if err != nil {
-		return model.Order{}, err
-	}
-	tx.Commit(ctx)
-	return res, nil
+func (s *Service) GetOrder(ctx context.Context, id string) (model.Order, error) {
+	// read операция не должна быть в транзакции
+	return s.repositoryOrder.GetOrder(ctx, id)
 }
 
-func (s *service) UpdateOrder(ctx context.Context, order model.Order) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+func (s *Service) UpdateOrder(ctx context.Context, order model.Order) error {
+	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
 
-	err = s.repository.UpdateOrder(ctx, tx, order)
-	if err != nil {
-		return err
-	}
-	tx.Commit(ctx)
-	return nil
+		if err := s.repositoryOrder.UpdateOrder(ctx, tx, order); err != nil {
+			return err
+		}
+
+		event, err := buildOrderEvent(order.ID, model.EventUpdated, model.SourceHTTPSync, order)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
+		}
+
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
+	})
 }
 
-func (s *service) DeleteOrder(ctx context.Context, id string) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+func (s *Service) DeleteOrder(ctx context.Context, id string) error {
+	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
 
-	err = s.repository.DeleteOrder(ctx, tx, id)
-	if err != nil {
-		return err
-	}
-	tx.Commit(ctx)
-	return nil
+		if err := s.repositoryOrder.DeleteOrder(ctx, tx, id); err != nil {
+			s.logger.Error("failed to delete order in repository", zap.Error(err))
+			return err
+		}
+
+		orderIDUUID, err := uuid.Parse(id)
+		if err != nil {
+			s.logger.Error("failed to parse order ID", zap.Error(err))
+			return err
+		}
+
+		event, err := buildOrderEvent(orderIDUUID, model.EventDeleted, model.SourceHTTPSync, nil)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
+		}
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
+	})
 }
 
-func (s *service) HandleCreateOrder(ctx context.Context, msg kafka.CreateOrderMessage) error {
-	order := model.Order{
-		ID:          msg.OrderID,
-		CustomerID:  msg.CustomerID,
-		Status:      msg.Status,
-		TotalAmount: msg.TotalAmount,
-		Currency:    msg.Currency,
-		Items:       msg.Items,
-	}
-	return s.CreateOrderFromKafka(ctx, order)
-}
+func (s *Service) DeleteSoftOrder(ctx context.Context, id string) error {
+	return pgx.BeginFunc(ctx, s.txManager, func(tx pgx.Tx) error {
 
-func (s *service) CreateOrderKafka(ctx context.Context, order model.Order) error {
-	message := kafka.CreateOrderMessage{
-		OrderID: order.ID,
-		CustomerID: order.CustomerID,
-		Status: order.Status,
-		TotalAmount: order.TotalAmount,
-		Currency: order.Currency,
-		Items: order.Items,
-	}
-	s.logger.Info("sending message to kafka", "message", message)
-	return s.producer.SendMessage(message)
-}
+		if err := s.repositoryOrder.DeleteSoftOrder(ctx, tx, id); err != nil {
+			s.logger.Error("failed to delete soft order in repository", zap.Error(err))
+			return err
+		}
 
-func (s *service) CreateOrderFromKafka(ctx context.Context, order model.Order) error {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
+		orderIDUUID, err := uuid.Parse(id)
+		if err != nil {
+			s.logger.Error("failed to parse order ID", zap.Error(err))
+			return err
+		}
 
-	if err := s.repository.CreateOrder(ctx, tx, order); err != nil {
-		return err
-	}
-
-	return tx.Commit(ctx)
+		event, err := buildOrderEvent(orderIDUUID, model.EventDeleted, model.SourceHTTPSync, nil)
+		if err != nil {
+			s.logger.Error("failed to build order event", zap.Error(err))
+			return err
+		}
+		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
+	})
 }

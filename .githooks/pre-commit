@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "→ golangci-lint"
+make lint
+
+echo "→ golangci-lint --fix"
+make lint-fix
+
+echo "→ tests"
+go test ./...

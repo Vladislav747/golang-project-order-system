@@ -1,9 +1,9 @@
 env: "prod" #local, stg, prod
+processing_mode: 
+  mode: "async" # sync, async
 http_server:
   read_timeout: 10s
   write_timeout: 10s
   idle_timeout: 60s
   graceful_shutdown_timeout: 10s
-  user: "myuser"
-  password: "mypass"
-migrations_path: "./migrations"
+  request_timeout: 10s
