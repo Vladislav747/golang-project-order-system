@@ -7,8 +7,8 @@ make lint
 echo "→ golangci-lint --fix"
 make lint-fix
 
-echo "→ server-test"
-make server-test
+echo "→ service-test"
+make service-test
 
 echo "→ handler-test"
 make handler-test
