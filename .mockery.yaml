@@ -26,3 +26,8 @@ packages:
       dir: internal/service/mocks
       outpkg: mocks
       include-regex: "^Tx$"
+
+
+  github.com/Vladislav747/golang-project-order-system/internal/handler/order:
+    config:
+      include-regex: "^Service|Handler$"

@@ -56,6 +56,9 @@ test-e2e-async:
 service-test:
 	go test ./internal/service/ -v
 
+handler-test:
+	go test ./internal/handler/order/ -v
+
 lint:
 	golangci-lint run
 
