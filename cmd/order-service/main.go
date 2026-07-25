@@ -21,6 +21,7 @@ import (
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
+	grpcserver "github.com/Vladislav747/golang-project-order-system/internal/transport/grpcserver"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
 
@@ -76,7 +77,20 @@ func main() {
 		}
 	}()
 
-	// Запускаем сервер в отдельной горутине
+	orderGrpc := grpcserver.NewOrderServer(svc, logger, provider)
+	grpcSrv, err := grpcserver.NewServer(cfg.GrpcPort, orderGrpc, logger)
+	if err != nil {
+		log.Panicf("failed to create gRPC server: %v", err)
+	}
+
+	go func() {
+		logger.Info("gRPC server started on port", zap.Int("port", cfg.GrpcPort))
+		if err := grpcSrv.Serve(); err != nil {
+			log.Panicf("gRPC server error: %v", err)
+		}
+	}()
+
+	// Запускаем HTTP сервер в отдельной горутине
 	go func() {
 		logger.Info("server started")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -85,11 +99,12 @@ func main() {
 	}()
 
 	// Запускаем graceful shutdown
-	gracefulShutdown(server, logger, consumer, cancel, consumerWG, producer, provider, watchCancel)
+	gracefulShutdown(server, grpcSrv, logger, consumer, cancel, consumerWG, producer, provider, watchCancel)
 }
 
 func gracefulShutdown(
 	server *http.Server,
+	grpcSrv *grpcserver.Server,
 	logger *zap.Logger,
 	consumer *kafka.Consumer,
 	consumerCancel context.CancelFunc,
@@ -114,10 +129,13 @@ func gracefulShutdown(
 	)
 	defer cancel()
 
-	// Останавливаем сервер
+	// Останавливаем HTTP сервер
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error("server shutdown failed", zap.Error(err))
 	}
+
+	// Останавливаем GRPC сервер
+	grpcSrv.Shutdown(shutdownCtx)
 
 	logger.Info("shutting down consumer")
 	consumerCancel()
@@ -147,6 +165,7 @@ func mustInitConfigAndLogger() (*config.Config, *zap.Logger) {
 	logger.Info("starting app",
 		zap.String("env", cfg.Env),
 		zap.Int("port", cfg.Port),
+		zap.Int("grpcPort", cfg.GrpcPort),
 	)
 
 	return cfg, logger

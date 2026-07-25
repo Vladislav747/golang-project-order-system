@@ -29,17 +29,26 @@ func loadEnv(cfg *Config) {
 		ConsumerGroup: os.Getenv("KAFKA_CONSUMER_GROUP"),
 	}
 
-	if port := os.Getenv("PORT"); port != "" {
+	if port := os.Getenv("HTTP_PORT"); port != "" {
 		p, err := strconv.Atoi(port)
 		if err == nil {
 			cfg.Port = p
+		}
+	}
+	if port := os.Getenv("GRPC_PORT"); port != "" {
+		p, err := strconv.Atoi(port)
+		if err == nil {
+			cfg.GrpcPort = p
 		}
 	}
 }
 
 func (cfg *Config) validateEnv() error {
 	if cfg.Port <= 0 {
-		return fmt.Errorf("PORT is not set or invalid")
+		return fmt.Errorf("HTTP_PORT is not set or invalid")
+	}
+	if cfg.GrpcPort <= 0 {
+		return fmt.Errorf("GRPC_PORT is not set or invalid")
 	}
 	if cfg.Database.URL == "" {
 		return fmt.Errorf("DATABASE_URL is not set")

@@ -107,3 +107,15 @@ go build ./cmd/order-service/main.go
 order_events → soft delete → идемпотентность → graceful shutdown
 → пагинация/фильтр → DTO → service_test → миграции → integration test
 ```
+
+Перегенерировать grpc
+```
+export PATH="$(go env GOPATH)/bin:$PATH"
+mkdir -p internal/pkg/api
+protoc -I internal/api \
+  --go_out=internal/pkg/api --go_opt=paths=source_relative \
+  --go-grpc_out=internal/pkg/api --go-grpc_opt=paths=source_relative \
+  order/v1/order.proto
+
+  ls internal/pkg/api/order/v1/ 
+```

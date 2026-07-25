@@ -57,6 +57,16 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		input.ID = ID
 	}
 
+	var items []json.RawMessage
+	if err := json.Unmarshal(input.Items, &items); err != nil {
+		http.Error(w, "invalid items", http.StatusBadRequest)
+		return
+	}
+	if len(items) == 0 {
+		http.Error(w, "items are required", http.StatusBadRequest)
+		return
+	}
+
 	cfg := h.provider.Get()
 	ctx, cancel := utils.RequestContext(r, cfg.HttpServer.RequestTimeout)
 	defer cancel()
@@ -115,6 +125,7 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		h.logger.Error("failed to get order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

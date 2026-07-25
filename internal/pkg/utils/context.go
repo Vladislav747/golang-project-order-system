@@ -10,3 +10,7 @@ func RequestContext(r *http.Request, requestTimeout time.Duration) (context.Cont
 	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
 	return ctx, cancel
 }
+
+func ContextWithTimeout(ctx context.Context, requestTimeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, requestTimeout)
+}
