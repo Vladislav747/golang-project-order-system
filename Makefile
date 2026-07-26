@@ -1,5 +1,5 @@
 # PHONY - тут игнорирует ошибки
-.PHONY: migrate dev-up dev-down prod-up prod-down build local-run rebuild-go-app-docker docker-compose-exec-postgres-psql test-integration service-test
+.PHONY: migrate dev-up dev-down prod-up prod-down build local-run rebuild-go-app-docker docker-compose-exec-postgres-psql test-integration service-test load-k6 load-k6-smoke
 
 DATABASE_URL ?= postgres://orders:orders@localhost:5432/orders?sslmode=disable
 
@@ -58,6 +58,20 @@ service-test:
 
 handler-test:
 	go test ./internal/handler/order/ -v
+
+# Load-тест HTTP (нужен запущенный сервис на BASE_URL).
+# Пример: make local-run  →  make load-k6-smoke
+BASE_URL ?= http://127.0.0.1:8080
+
+load-k6-smoke:
+	BASE_URL=$(BASE_URL) k6 run --vus 5 --duration 20s scripts/load/orders.js
+
+load-k6:
+	BASE_URL=$(BASE_URL) k6 run --stage 20s:10 --stage 40s:30 --stage 20s:0 scripts/load/orders.js
+
+# Только POST /order (нужен wrk: brew install wrk)
+load-wrk-create:
+	wrk -t4 -c50 -d30s -s scripts/load/create_order.lua $(BASE_URL)
 
 lint:
 	golangci-lint run

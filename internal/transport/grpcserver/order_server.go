@@ -26,6 +26,8 @@ type Service interface {
 	DeleteSoftOrder(ctx context.Context, id string) error
 	UpdateOrderKafka(ctx context.Context, order model.Order) error
 	DeleteOrderKafka(ctx context.Context, id string) error
+
+	GetOrderEvents(ctx context.Context) ([]model.OrderEvent, error)
 }
 
 type OrderGrpcServer struct {
@@ -67,8 +69,6 @@ func (s *OrderGrpcServer) CreateOrder(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	s.logger.Info("CreateOrder grpc", zap.String("order_id", order.ID.String()))
-
 	return &orderv1.CreateOrderResponse{
 		Id:    order.ID.String(),
 		Async: async,
@@ -97,8 +97,6 @@ func (s *OrderGrpcServer) GetOrder(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	s.logger.Info("GetOrder grpc", zap.String("order_id", order.ID.String()))
-
 	return &orderv1.GetOrderResponse{Order: toProto(order)}, nil
 }
 
@@ -120,8 +118,6 @@ func (s *OrderGrpcServer) GetOrders(
 	for _, o := range orders {
 		out = append(out, toProto(o))
 	}
-
-	s.logger.Info("GetOrders grpc")
 
 	return &orderv1.GetOrdersResponse{Orders: out}, nil
 }
@@ -150,8 +146,6 @@ func (s *OrderGrpcServer) UpdateOrder(
 		s.logger.Error("failed to update order in grpc server", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
-	s.logger.Info("UpdateOrder grpc", zap.String("order_id", order.ID.String()))
 
 	return &orderv1.UpdateOrderResponse{Async: async}, nil
 }
@@ -185,8 +179,6 @@ func (s *OrderGrpcServer) DeleteOrder(
 		s.logger.Error("failed to delete order in grpc server", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
-	s.logger.Info("DeleteOrder grpc", zap.String("order_id", id))
 
 	return &orderv1.DeleteOrderResponse{Async: async}, nil
 }

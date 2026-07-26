@@ -108,7 +108,7 @@ order_events → soft delete → идемпотентность → graceful shu
 → пагинация/фильтр → DTO → service_test → миграции → integration test
 ```
 
-Перегенерировать grpc
+Перегенерировать grpc order
 ```
 export PATH="$(go env GOPATH)/bin:$PATH"
 mkdir -p internal/pkg/api
@@ -119,3 +119,12 @@ protoc -I internal/api \
 
   ls internal/pkg/api/order/v1/ 
 ```
+
+Перегенерировать grpc order event
+```
+mkdir -p internal/pkg/api/order_event/v1
+protoc -I internal/api \
+  --go_out=internal/pkg/api --go_opt=paths=source_relative \
+  --go-grpc_out=internal/pkg/api --go-grpc_opt=paths=source_relative \
+  order_event/v1/order_event.proto
+  ```

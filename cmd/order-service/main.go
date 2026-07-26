@@ -46,7 +46,7 @@ func main() {
 
 	// Регистрируем маршруты
 	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux, orderHandler, orderEventHandler)
+	handler.RegisterRoutes(mux, logger, orderHandler, orderEventHandler)
 
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.Port),
@@ -78,7 +78,8 @@ func main() {
 	}()
 
 	orderGrpc := grpcserver.NewOrderServer(svc, logger, provider)
-	grpcSrv, err := grpcserver.NewServer(cfg.GrpcPort, orderGrpc, logger)
+	orderEventGrpc := grpcserver.NewOrderEventServer(svc, logger, provider)
+	grpcSrv, err := grpcserver.NewServer(cfg.GrpcPort, orderGrpc, orderEventGrpc, logger)
 	if err != nil {
 		log.Panicf("failed to create gRPC server: %v", err)
 	}

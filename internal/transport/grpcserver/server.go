@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	orderv1 "github.com/Vladislav747/golang-project-order-system/internal/pkg/api/order/v1"
+	order_event_v1 "github.com/Vladislav747/golang-project-order-system/internal/pkg/api/order_event/v1"
 )
 
 type Server struct {
@@ -17,13 +18,21 @@ type Server struct {
 	logger     *zap.Logger
 }
 
-func NewServer(port int, orderGrpcServer *OrderGrpcServer, logger *zap.Logger) (*Server, error) {
+func NewServer(
+	port int,
+	orderGrpcServer *OrderGrpcServer,
+	orderEventGrpcServer *OrderEventGrpcServer,
+	logger *zap.Logger,
+) (*Server, error) {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(MetricsUnaryInterceptor(logger)),
+	)
 	orderv1.RegisterOrderServiceServer(grpcServer, orderGrpcServer)
+	order_event_v1.RegisterOrderEventServiceServer(grpcServer, orderEventGrpcServer)
 	return &Server{grpcServer: grpcServer, listener: listener, logger: logger}, nil
 }
 
