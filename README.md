@@ -128,3 +128,14 @@ protoc -I internal/api \
   --go-grpc_out=internal/pkg/api --go-grpc_opt=paths=source_relative \
   order_event/v1/order_event.proto
   ```
+
+
+  запускать прогон скрипта - нагрузочное тестирование
+
+  ```
+  make load-k6
+  ```
+
+  ```
+  make load-k6-smoke
+  ```
