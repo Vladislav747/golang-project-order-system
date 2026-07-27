@@ -55,8 +55,19 @@ func toProtoOrderEvent(e model.OrderEvent) *order_event_v1.OrderEvent {
 		Id:        e.ID.String(),
 		OrderId:   e.OrderID.String(),
 		EventType: string(e.EventType),
-		Source:    string(e.Source),
+		Source:    toProtoSource(e.Source),
 		Payload:   e.Payload,
 		CreatedAt: e.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+func toProtoSource(s model.EventSource) order_event_v1.EventSource {
+	switch s {
+	case model.SourceHTTPSync:
+		return order_event_v1.EventSource_EVENT_SOURCE_HTTP_SYNC
+	case model.SourceKafka:
+		return order_event_v1.EventSource_EVENT_SOURCE_KAFKA
+	default:
+		return order_event_v1.EventSource_EVENT_SOURCE_UNSPECIFIED
 	}
 }
