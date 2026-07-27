@@ -1,14 +1,18 @@
+version: "2"
+
 run:
-  go: "1.22"
+  go: "1.25"
+  timeout: 5m
 
 linters:
-  enable:
-    - gofumpt
-    - gci
+  default: none
 
-linters-settings:
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/Vladislav747/golang-project-order-system)
+formatters:
+  enable:
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/Vladislav747/golang-project-order-system)

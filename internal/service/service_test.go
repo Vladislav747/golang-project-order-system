@@ -1,111 +1,159 @@
+//go:build !integration
+
 package service
 
 import (
-	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
-	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
+	"github.com/Vladislav747/golang-project-order-system/internal/service/mocks"
 )
 
-type mockRepository struct {
-	createOrderFn func(ctx context.Context, tx pgx.Tx, order model.Order) error
-	getOrdersFn   func(ctx context.Context, tx pgx.Tx) ([]model.Order, error)
-	getOrderFn    func(ctx context.Context, tx pgx.Tx, id string) (model.Order, error)
-	updateOrderFn func(ctx context.Context, tx pgx.Tx, order model.Order) error
-	deleteOrderFn func(ctx context.Context, tx pgx.Tx, id string) error
-}
-
-func (m *mockRepository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
-	if m.createOrderFn != nil {
-		return m.createOrderFn(ctx, tx, order)
-	}
-	return nil
-}
-
-func (m *mockRepository) GetOrders(ctx context.Context, tx pgx.Tx) ([]model.Order, error) {
-	if m.getOrdersFn != nil {
-		return m.getOrdersFn(ctx, tx)
-	}
-	return nil, nil
-}
-
-func (m *mockRepository) GetOrder(ctx context.Context, tx pgx.Tx, id string) (model.Order, error) {
-	if m.getOrderFn != nil {
-		return m.getOrderFn(ctx, tx, id)
-	}
-	return model.Order{}, nil
-}
-
-func (m *mockRepository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
-	if m.updateOrderFn != nil {
-		return m.updateOrderFn(ctx, tx, order)
-	}
-	return nil
-}
-
-func (m *mockRepository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) error {
-	if m.deleteOrderFn != nil {
-		return m.deleteOrderFn(ctx, tx, id)
-	}
-	return nil
-}
-
-func newTestLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
-}
-
-func newTestService(repo Repository) *service {
-	return NewService(repo, nil, nil, newTestLogger())
-}
-
 func TestNewService(t *testing.T) {
-	svc := newTestService(&mockRepository{})
+	t.Parallel()
+	_, _, _, _, svc := createMocks(t)
+
 	if svc == nil {
 		t.Fatal("expected service instance")
 	}
 }
 
-func TestCreateOrderKafka_BuildsMessage(t *testing.T) {
-	t.Skip("TODO: inject OrderPublisher interface to mock producer")
+func TestCreateOrder_RepositoryCalled(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
 
-	order := model.Order{
-		CustomerID:  uuid.New(),
-		Status:      "pending",
-		TotalAmount: 1000,
-		Currency:    "RUB",
-		Items:       []byte("[]"),
-	}
+	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
 
-	_ = kafka.CreateOrderMessage{
-		OrderID:     order.ID,
-		CustomerID:  order.CustomerID,
-		Status:      order.Status,
-		TotalAmount: order.TotalAmount,
-		Currency:    order.Currency,
-		Items:       order.Items,
-	}
+	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
+	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
+	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
+
+	order := model.Order{Status: "pending"}
+
+	repoOrder.EXPECT().
+		CreateOrder(mock.Anything, mockTx, mock.MatchedBy(func(o model.Order) bool {
+			return o.Status == "pending"
+		})).
+		Return(nil)
+
+	repoEvent.EXPECT().
+		CreateOrderEvent(mock.Anything, mockTx, mock.MatchedBy(func(e model.OrderEvent) bool {
+			return e.EventType == model.EventCreated && e.Source == model.SourceHTTPSync
+		})).
+		Return(nil)
+
+	err := svc.CreateOrder(ctx, order)
+	require.NoError(t, err)
 }
 
-func TestCreateOrder_RepositoryCalled(t *testing.T) {
-	t.Skip("TODO: mock pgxpool or extract TxManager for unit tests")
+func TestGetOrders_RepositoryCalled(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
 
-	ctx := context.Background()
-	called := false
+	repoOrder, _, _, _, svc := createMocks(t)
 
-	repo := &mockRepository{
-		createOrderFn: func(ctx context.Context, tx pgx.Tx, order model.Order) error {
-			called = true
-			return nil
-		},
-	}
+	repoOrder.EXPECT().
+		GetOrders(mock.Anything).
+		Return([]model.Order{{Status: "pending"}}, nil)
 
-	svc := newTestService(repo)
-	_ = svc.CreateOrder(ctx, model.Order{Status: "pending"})
-	_ = called
+	orders, err := svc.GetOrders(ctx)
+	require.NoError(t, err)
+	require.Len(t, orders, 1)
+	require.Equal(t, "pending", orders[0].Status)
+}
+
+func TestDeleteOrder_RepositoryCalled(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
+
+	orderID := "6ba7b810-9dad-11d1-80b4-00c04fd43023"
+
+	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
+	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
+	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
+
+	repoOrder.EXPECT().
+		DeleteOrder(mock.Anything, mockTx, orderID).
+		Return(nil)
+
+	repoEvent.EXPECT().
+		CreateOrderEvent(mock.Anything, mockTx, mock.MatchedBy(func(e model.OrderEvent) bool {
+			return e.EventType == model.EventDeleted &&
+				e.Source == model.SourceHTTPSync &&
+				e.OrderID == uuid.MustParse(orderID)
+		})).
+		Return(nil)
+
+	err := svc.DeleteOrder(ctx, orderID)
+	require.NoError(t, err)
+}
+
+func TestUpdateOrder_RepositoryCalled(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
+
+	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
+	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
+	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
+
+	order := model.Order{Status: "completed"}
+
+	repoOrder.EXPECT().
+		UpdateOrder(mock.Anything, mockTx, mock.MatchedBy(func(o model.Order) bool {
+			return o.Status == "completed"
+		})).
+		Return(nil)
+
+	repoEvent.EXPECT().
+		CreateOrderEvent(mock.Anything, mockTx, mock.MatchedBy(func(e model.OrderEvent) bool {
+			return e.EventType == model.EventUpdated && e.Source == model.SourceHTTPSync
+		})).
+		Return(nil)
+
+	err := svc.UpdateOrder(ctx, order)
+	require.NoError(t, err)
+}
+
+func TestGetOrder_RepositoryCalled(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	repoOrder, _, _, _, svc := createMocks(t)
+
+	expected := model.Order{Status: "pending"}
+
+	repoOrder.EXPECT().
+		GetOrder(mock.Anything, "123").
+		Return(expected, nil)
+
+	order, err := svc.GetOrder(ctx, "123")
+	require.NoError(t, err)
+	require.Equal(t, expected, order)
+}
+
+func createMocks(t *testing.T) (
+	*mocks.MockRepositoryOrder,
+	*mocks.MockRepositoryOrderEvent,
+	*mocks.MockTxManager,
+	*mocks.MockTx,
+	*Service,
+) {
+	t.Helper()
+	repoOrder := mocks.NewMockRepositoryOrder(t)
+	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
+	txManager := mocks.NewMockTxManager(t)
+	mockTx := mocks.NewMockTx(t)
+
+	svc := NewService(repoOrder, repoEvent, txManager, nil, zap.NewNop())
+
+	return repoOrder, repoEvent, txManager, mockTx, svc
 }

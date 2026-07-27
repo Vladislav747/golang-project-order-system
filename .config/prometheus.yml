@@ -12,6 +12,6 @@ scrape_configs:
     follow_redirects: true
     static_configs:
       - targets:
-          - localhost:8082
-          - go-app:8082 # app в docker-compose
-          - host.docker.internal:8082  
+          - localhost:8080
+          - go-app:8080 # app в docker-compose
+          - host.docker.internal:8080  
