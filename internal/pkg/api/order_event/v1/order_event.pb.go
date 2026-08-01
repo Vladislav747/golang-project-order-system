@@ -25,22 +25,22 @@ const (
 type EventSource int32
 
 const (
-	EventSource_EVENT_SOURCE_UNSPECIFIED EventSource = 0
-	EventSource_EVENT_SOURCE_HTTP_SYNC   EventSource = 1 // http_sync
-	EventSource_EVENT_SOURCE_KAFKA       EventSource = 2 // kafka
+	EventSource_UNSPECIFIED EventSource = 0
+	EventSource_HTTP_SYNC   EventSource = 1 // http_sync
+	EventSource_KAFKA       EventSource = 2 // kafka
 )
 
 // Enum value maps for EventSource.
 var (
 	EventSource_name = map[int32]string{
-		0: "EVENT_SOURCE_UNSPECIFIED",
-		1: "EVENT_SOURCE_HTTP_SYNC",
-		2: "EVENT_SOURCE_KAFKA",
+		0: "UNSPECIFIED",
+		1: "HTTP_SYNC",
+		2: "KAFKA",
 	}
 	EventSource_value = map[string]int32{
-		"EVENT_SOURCE_UNSPECIFIED": 0,
-		"EVENT_SOURCE_HTTP_SYNC":   1,
-		"EVENT_SOURCE_KAFKA":       2,
+		"UNSPECIFIED": 0,
+		"HTTP_SYNC":   1,
+		"KAFKA":       2,
 	}
 )
 
@@ -71,13 +71,62 @@ func (EventSource) EnumDescriptor() ([]byte, []int) {
 	return file_order_event_v1_order_event_proto_rawDescGZIP(), []int{0}
 }
 
+type EventType int32
+
+const (
+	EventType_CREATED EventType = 0
+	EventType_UPDATED EventType = 1
+	EventType_DELETED EventType = 2
+)
+
+// Enum value maps for EventType.
+var (
+	EventType_name = map[int32]string{
+		0: "CREATED",
+		1: "UPDATED",
+		2: "DELETED",
+	}
+	EventType_value = map[string]int32{
+		"CREATED": 0,
+		"UPDATED": 1,
+		"DELETED": 2,
+	}
+)
+
+func (x EventType) Enum() *EventType {
+	p := new(EventType)
+	*p = x
+	return p
+}
+
+func (x EventType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EventType) Descriptor() protoreflect.EnumDescriptor {
+	return file_order_event_v1_order_event_proto_enumTypes[1].Descriptor()
+}
+
+func (EventType) Type() protoreflect.EnumType {
+	return &file_order_event_v1_order_event_proto_enumTypes[1]
+}
+
+func (x EventType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EventType.Descriptor instead.
+func (EventType) EnumDescriptor() ([]byte, []int) {
+	return file_order_event_v1_order_event_proto_rawDescGZIP(), []int{1}
+}
+
 type OrderEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	EventType     string                 `protobuf:"bytes,3,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`           // "created" | "updated" | "deleted"
-	Source        EventSource            `protobuf:"varint,4,opt,name=source,proto3,enum=order_event.v1.EventSource" json:"source,omitempty"` // "http_sync" | "kafka"
-	Payload       []byte                 `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"`                                // JSON
+	EventType     EventType              `protobuf:"varint,3,opt,name=event_type,json=eventType,proto3,enum=order_event.v1.EventType" json:"event_type,omitempty"` // "created" | "updated" | "deleted"
+	Source        EventSource            `protobuf:"varint,4,opt,name=source,proto3,enum=order_event.v1.EventSource" json:"source,omitempty"`                      // "http_sync" | "kafka"
+	Payload       []byte                 `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"`                                                     // JSON
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -127,18 +176,18 @@ func (x *OrderEvent) GetOrderId() string {
 	return ""
 }
 
-func (x *OrderEvent) GetEventType() string {
+func (x *OrderEvent) GetEventType() EventType {
 	if x != nil {
 		return x.EventType
 	}
-	return ""
+	return EventType_CREATED
 }
 
 func (x *OrderEvent) GetSource() EventSource {
 	if x != nil {
 		return x.Source
 	}
-	return EventSource_EVENT_SOURCE_UNSPECIFIED
+	return EventSource_UNSPECIFIED
 }
 
 func (x *OrderEvent) GetPayload() []byte {
@@ -239,24 +288,28 @@ var File_order_event_v1_order_event_proto protoreflect.FileDescriptor
 
 const file_order_event_v1_order_event_proto_rawDesc = "" +
 	"\n" +
-	" order_event/v1/order_event.proto\x12\x0eorder_event.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe0\x01\n" +
+	" order_event/v1/order_event.proto\x12\x0eorder_event.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfb\x01\n" +
 	"\n" +
 	"OrderEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
-	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x1d\n" +
+	"\border_id\x18\x02 \x01(\tR\aorderId\x128\n" +
 	"\n" +
-	"event_type\x18\x03 \x01(\tR\teventType\x123\n" +
+	"event_type\x18\x03 \x01(\x0e2\x19.order_event.v1.EventTypeR\teventType\x123\n" +
 	"\x06source\x18\x04 \x01(\x0e2\x1b.order_event.v1.EventSourceR\x06source\x12\x18\n" +
 	"\apayload\x18\x05 \x01(\fR\apayload\x129\n" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x17\n" +
 	"\x15GetOrderEventsRequest\"L\n" +
 	"\x16GetOrderEventsResponse\x122\n" +
-	"\x06events\x18\x01 \x03(\v2\x1a.order_event.v1.OrderEventR\x06events*_\n" +
-	"\vEventSource\x12\x1c\n" +
-	"\x18EVENT_SOURCE_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16EVENT_SOURCE_HTTP_SYNC\x10\x01\x12\x16\n" +
-	"\x12EVENT_SOURCE_KAFKA\x10\x022t\n" +
+	"\x06events\x18\x01 \x03(\v2\x1a.order_event.v1.OrderEventR\x06events*8\n" +
+	"\vEventSource\x12\x0f\n" +
+	"\vUNSPECIFIED\x10\x00\x12\r\n" +
+	"\tHTTP_SYNC\x10\x01\x12\t\n" +
+	"\x05KAFKA\x10\x02*2\n" +
+	"\tEventType\x12\v\n" +
+	"\aCREATED\x10\x00\x12\v\n" +
+	"\aUPDATED\x10\x01\x12\v\n" +
+	"\aDELETED\x10\x022t\n" +
 	"\x11OrderEventService\x12_\n" +
 	"\x0eGetOrderEvents\x12%.order_event.v1.GetOrderEventsRequest\x1a&.order_event.v1.GetOrderEventsResponseBdZbgithub.com/Vladislav747/golang-project-order-system/internal/pkg/api/order_event/v1;order_event_v1b\x06proto3"
 
@@ -272,26 +325,28 @@ func file_order_event_v1_order_event_proto_rawDescGZIP() []byte {
 	return file_order_event_v1_order_event_proto_rawDescData
 }
 
-var file_order_event_v1_order_event_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_order_event_v1_order_event_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_order_event_v1_order_event_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_order_event_v1_order_event_proto_goTypes = []any{
 	(EventSource)(0),               // 0: order_event.v1.EventSource
-	(*OrderEvent)(nil),             // 1: order_event.v1.OrderEvent
-	(*GetOrderEventsRequest)(nil),  // 2: order_event.v1.GetOrderEventsRequest
-	(*GetOrderEventsResponse)(nil), // 3: order_event.v1.GetOrderEventsResponse
-	(*timestamppb.Timestamp)(nil),  // 4: google.protobuf.Timestamp
+	(EventType)(0),                 // 1: order_event.v1.EventType
+	(*OrderEvent)(nil),             // 2: order_event.v1.OrderEvent
+	(*GetOrderEventsRequest)(nil),  // 3: order_event.v1.GetOrderEventsRequest
+	(*GetOrderEventsResponse)(nil), // 4: order_event.v1.GetOrderEventsResponse
+	(*timestamppb.Timestamp)(nil),  // 5: google.protobuf.Timestamp
 }
 var file_order_event_v1_order_event_proto_depIdxs = []int32{
-	0, // 0: order_event.v1.OrderEvent.source:type_name -> order_event.v1.EventSource
-	4, // 1: order_event.v1.OrderEvent.created_at:type_name -> google.protobuf.Timestamp
-	1, // 2: order_event.v1.GetOrderEventsResponse.events:type_name -> order_event.v1.OrderEvent
-	2, // 3: order_event.v1.OrderEventService.GetOrderEvents:input_type -> order_event.v1.GetOrderEventsRequest
-	3, // 4: order_event.v1.OrderEventService.GetOrderEvents:output_type -> order_event.v1.GetOrderEventsResponse
-	4, // [4:5] is the sub-list for method output_type
-	3, // [3:4] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // 0: order_event.v1.OrderEvent.event_type:type_name -> order_event.v1.EventType
+	0, // 1: order_event.v1.OrderEvent.source:type_name -> order_event.v1.EventSource
+	5, // 2: order_event.v1.OrderEvent.created_at:type_name -> google.protobuf.Timestamp
+	2, // 3: order_event.v1.GetOrderEventsResponse.events:type_name -> order_event.v1.OrderEvent
+	3, // 4: order_event.v1.OrderEventService.GetOrderEvents:input_type -> order_event.v1.GetOrderEventsRequest
+	4, // 5: order_event.v1.OrderEventService.GetOrderEvents:output_type -> order_event.v1.GetOrderEventsResponse
+	5, // [5:6] is the sub-list for method output_type
+	4, // [4:5] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_order_event_v1_order_event_proto_init() }
@@ -304,7 +359,7 @@ func file_order_event_v1_order_event_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_order_event_v1_order_event_proto_rawDesc), len(file_order_event_v1_order_event_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,

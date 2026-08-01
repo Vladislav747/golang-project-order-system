@@ -11,15 +11,21 @@ service OrderEventService {
 }
 
 enum EventSource {
-  EVENT_SOURCE_UNSPECIFIED = 0;
-  EVENT_SOURCE_HTTP_SYNC = 1; // http_sync
-  EVENT_SOURCE_KAFKA = 2;     // kafka
+  UNSPECIFIED = 0;
+  HTTP_SYNC = 1; // http_sync
+  KAFKA = 2;     // kafka
+}
+
+enum EventType {
+  CREATED = 0;
+  UPDATED = 1;
+  DELETED = 2;
 }
 
 message OrderEvent {
   string id = 1;
   string order_id = 2;
-  string event_type = 3; // "created" | "updated" | "deleted"
+  EventType event_type = 3; // "created" | "updated" | "deleted"
   EventSource source = 4;     // "http_sync" | "kafka"
   bytes payload = 5;     // JSON
   google.protobuf.Timestamp created_at = 6;
