@@ -9,6 +9,7 @@ package order_event_v1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -77,7 +78,7 @@ type OrderEvent struct {
 	EventType     string                 `protobuf:"bytes,3,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`           // "created" | "updated" | "deleted"
 	Source        EventSource            `protobuf:"varint,4,opt,name=source,proto3,enum=order_event.v1.EventSource" json:"source,omitempty"` // "http_sync" | "kafka"
 	Payload       []byte                 `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"`                                // JSON
-	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`           // RFC3339
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -147,11 +148,11 @@ func (x *OrderEvent) GetPayload() []byte {
 	return nil
 }
 
-func (x *OrderEvent) GetCreatedAt() string {
+func (x *OrderEvent) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
 	}
-	return ""
+	return nil
 }
 
 type GetOrderEventsRequest struct {
@@ -238,7 +239,7 @@ var File_order_event_v1_order_event_proto protoreflect.FileDescriptor
 
 const file_order_event_v1_order_event_proto_rawDesc = "" +
 	"\n" +
-	" order_event/v1/order_event.proto\x12\x0eorder_event.v1\"\xc4\x01\n" +
+	" order_event/v1/order_event.proto\x12\x0eorder_event.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe0\x01\n" +
 	"\n" +
 	"OrderEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
@@ -246,9 +247,9 @@ const file_order_event_v1_order_event_proto_rawDesc = "" +
 	"\n" +
 	"event_type\x18\x03 \x01(\tR\teventType\x123\n" +
 	"\x06source\x18\x04 \x01(\x0e2\x1b.order_event.v1.EventSourceR\x06source\x12\x18\n" +
-	"\apayload\x18\x05 \x01(\fR\apayload\x12\x1d\n" +
+	"\apayload\x18\x05 \x01(\fR\apayload\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\tR\tcreatedAt\"\x17\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x17\n" +
 	"\x15GetOrderEventsRequest\"L\n" +
 	"\x16GetOrderEventsResponse\x122\n" +
 	"\x06events\x18\x01 \x03(\v2\x1a.order_event.v1.OrderEventR\x06events*_\n" +
@@ -278,17 +279,19 @@ var file_order_event_v1_order_event_proto_goTypes = []any{
 	(*OrderEvent)(nil),             // 1: order_event.v1.OrderEvent
 	(*GetOrderEventsRequest)(nil),  // 2: order_event.v1.GetOrderEventsRequest
 	(*GetOrderEventsResponse)(nil), // 3: order_event.v1.GetOrderEventsResponse
+	(*timestamppb.Timestamp)(nil),  // 4: google.protobuf.Timestamp
 }
 var file_order_event_v1_order_event_proto_depIdxs = []int32{
 	0, // 0: order_event.v1.OrderEvent.source:type_name -> order_event.v1.EventSource
-	1, // 1: order_event.v1.GetOrderEventsResponse.events:type_name -> order_event.v1.OrderEvent
-	2, // 2: order_event.v1.OrderEventService.GetOrderEvents:input_type -> order_event.v1.GetOrderEventsRequest
-	3, // 3: order_event.v1.OrderEventService.GetOrderEvents:output_type -> order_event.v1.GetOrderEventsResponse
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 1: order_event.v1.OrderEvent.created_at:type_name -> google.protobuf.Timestamp
+	1, // 2: order_event.v1.GetOrderEventsResponse.events:type_name -> order_event.v1.OrderEvent
+	2, // 3: order_event.v1.OrderEventService.GetOrderEvents:input_type -> order_event.v1.GetOrderEventsRequest
+	3, // 4: order_event.v1.OrderEventService.GetOrderEvents:output_type -> order_event.v1.GetOrderEventsResponse
+	4, // [4:5] is the sub-list for method output_type
+	3, // [3:4] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_order_event_v1_order_event_proto_init() }

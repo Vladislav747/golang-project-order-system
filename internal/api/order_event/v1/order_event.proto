@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package order_event.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/Vladislav747/golang-project-order-system/internal/pkg/api/order_event/v1;order_event_v1";
 
 service OrderEventService {
@@ -20,7 +22,7 @@ message OrderEvent {
   string event_type = 3; // "created" | "updated" | "deleted"
   EventSource source = 4;     // "http_sync" | "kafka"
   bytes payload = 5;     // JSON
-  string created_at = 6; // RFC3339
+  google.protobuf.Timestamp created_at = 6;
 }
 
 message GetOrderEventsRequest {}

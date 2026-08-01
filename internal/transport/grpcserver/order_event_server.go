@@ -2,11 +2,11 @@ package grpcserver
 
 import (
 	"context"
-	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
@@ -57,7 +57,7 @@ func toProtoOrderEvent(e model.OrderEvent) *order_event_v1.OrderEvent {
 		EventType: string(e.EventType),
 		Source:    toProtoSource(e.Source),
 		Payload:   e.Payload,
-		CreatedAt: e.CreatedAt.Format(time.RFC3339),
+		CreatedAt: timestamppb.New(e.CreatedAt),
 	}
 }
 

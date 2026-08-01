@@ -3,12 +3,12 @@ package grpcserver
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
@@ -232,9 +232,9 @@ func fromUpdateRequest(req *orderv1.UpdateOrderRequest) (model.Order, error) {
 }
 
 func toProto(o model.Order) *orderv1.Order {
-	deletedAt := ""
+	var deletedAt *timestamppb.Timestamp
 	if o.DeletedAt != nil {
-		deletedAt = o.DeletedAt.Format(time.RFC3339)
+		deletedAt = timestamppb.New(*o.DeletedAt)
 	}
 	return &orderv1.Order{
 		Id:          o.ID.String(),
@@ -243,8 +243,8 @@ func toProto(o model.Order) *orderv1.Order {
 		TotalAmount: o.TotalAmount,
 		Currency:    o.Currency,
 		Items:       o.Items,
-		CreatedAt:   o.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   o.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:   timestamppb.New(o.CreatedAt),
+		UpdatedAt:   timestamppb.New(o.UpdatedAt),
 		DeletedAt:   deletedAt,
 	}
 }

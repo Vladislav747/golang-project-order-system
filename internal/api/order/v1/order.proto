@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package order.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/Vladislav747/golang-project-order-system/internal/pkg/api/order/v1;orderv1";
 
 service OrderService {
@@ -19,9 +21,9 @@ message Order {
   int64 total_amount = 4;
   string currency = 5;
   bytes items = 6; // JSON
-  string created_at = 7; // RFC3339
-  string updated_at = 8;
-  string deleted_at = 9; // empty if not deleted
+  google.protobuf.Timestamp created_at = 7; // RFC3339
+  google.protobuf.Timestamp updated_at = 8;
+  google.protobuf.Timestamp deleted_at = 9; // empty if not deleted
 }
 
 message CreateOrderRequest {
