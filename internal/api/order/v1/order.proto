@@ -14,10 +14,19 @@ service OrderService {
   rpc DeleteOrder(DeleteOrderRequest) returns (DeleteOrderResponse);
 }
 
+enum StatusType {
+  UNSPECIFIED = 0;
+  CREATED = 1;
+  PENDING = 2;
+  COMPLETED = 3;
+  FAILED = 4;
+  DELETED = 5;
+}
+
 message Order {
   string id = 1;
   string customer_id = 2;
-  string status = 3;
+  StatusType status = 3;
   int64 total_amount = 4;
   string currency = 5;
   bytes items = 6; // JSON
@@ -29,7 +38,7 @@ message Order {
 message CreateOrderRequest {
   string id = 1; // optional; empty => server generates
   string customer_id = 2;
-  string status = 3;
+  StatusType status = 3;
   int64 total_amount = 4;
   string currency = 5;
   bytes items = 6;
@@ -57,7 +66,7 @@ message GetOrdersResponse {
 message UpdateOrderRequest {
   string id = 1;
   string customer_id = 2;
-  string status = 3;
+  StatusType status = 3;
   int64 total_amount = 4;
   string currency = 5;
   bytes items = 6;

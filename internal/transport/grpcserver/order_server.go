@@ -200,10 +200,15 @@ func fromCreateRequest(req *orderv1.CreateOrderRequest) (model.Order, error) {
 		return model.Order{}, errors.New("invalid customer_id")
 	}
 
+	status, err := statusFromProto(req.GetStatus())
+	if err != nil {
+		return model.Order{}, err
+	}
+
 	return model.Order{
 		ID:          id,
 		CustomerID:  customerID,
-		Status:      req.GetStatus(),
+		Status:      status,
 		TotalAmount: req.GetTotalAmount(),
 		Currency:    req.GetCurrency(),
 		Items:       req.GetItems(),
@@ -221,10 +226,15 @@ func fromUpdateRequest(req *orderv1.UpdateOrderRequest) (model.Order, error) {
 		return model.Order{}, errors.New("invalid customer_id")
 	}
 
+	status, err := statusFromProto(req.GetStatus())
+	if err != nil {
+		return model.Order{}, err
+	}
+
 	return model.Order{
 		ID:          id,
 		CustomerID:  customerID,
-		Status:      req.GetStatus(),
+		Status:      status,
 		TotalAmount: req.GetTotalAmount(),
 		Currency:    req.GetCurrency(),
 		Items:       req.GetItems(),
@@ -239,12 +249,48 @@ func toProto(o model.Order) *orderv1.Order {
 	return &orderv1.Order{
 		Id:          o.ID.String(),
 		CustomerId:  o.CustomerID.String(),
-		Status:      o.Status,
+		Status:      statusToProto(o.Status),
 		TotalAmount: o.TotalAmount,
 		Currency:    o.Currency,
 		Items:       o.Items,
 		CreatedAt:   timestamppb.New(o.CreatedAt),
 		UpdatedAt:   timestamppb.New(o.UpdatedAt),
 		DeletedAt:   deletedAt,
+	}
+}
+
+func statusFromProto(s orderv1.StatusType) (string, error) {
+	switch s {
+	case orderv1.StatusType_UNSPECIFIED:
+		return "", errors.New("status is required")
+	case orderv1.StatusType_CREATED:
+		return "created", nil
+	case orderv1.StatusType_PENDING:
+		return "pending", nil
+	case orderv1.StatusType_COMPLETED:
+		return "completed", nil
+	case orderv1.StatusType_FAILED:
+		return "failed", nil
+	case orderv1.StatusType_DELETED:
+		return "deleted", nil
+	default:
+		return "", errors.New("invalid status")
+	}
+}
+
+func statusToProto(s string) orderv1.StatusType {
+	switch s {
+	case "created":
+		return orderv1.StatusType_CREATED
+	case "pending":
+		return orderv1.StatusType_PENDING
+	case "completed":
+		return orderv1.StatusType_COMPLETED
+	case "failed":
+		return orderv1.StatusType_FAILED
+	case "deleted":
+		return orderv1.StatusType_DELETED
+	default:
+		return orderv1.StatusType_UNSPECIFIED
 	}
 }
