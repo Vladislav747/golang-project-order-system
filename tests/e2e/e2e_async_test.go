@@ -38,7 +38,7 @@ func (s *OrderAsyncE2ESuite) TestCreateOrder_AsyncViaKafka() {
 		Status: model.StatusPending,
 		TotalAmount: 1500,
 		Currency:    "USD",
-		Items:       json.RawMessage(`[]`),
+		Items:       json.RawMessage(`[{"sku":"A1","qty":1,"price":500},{"sku":"B2","qty":1,"price":500}]`),
 	}
 
 	code, body := doJSON(s.T(), s.client, http.MethodPost, "/order", payload)

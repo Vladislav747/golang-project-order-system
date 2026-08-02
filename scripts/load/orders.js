@@ -83,7 +83,7 @@ export default function () {
     const body = JSON.stringify({
       id: orderId,
       customer_id: CUSTOMER_ID,
-      status: 'paid',
+      status: 'completed',
       total_amount: 2000,
       currency: 'USD',
       items: [{ sku: 'A1', qty: 2, price: 1000 }],
