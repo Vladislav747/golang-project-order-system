@@ -20,8 +20,8 @@ import (
 
 type Mocks struct {
 	pool *pgxpool.Pool
-	ctx context.Context
-	svc *service.Service
+	ctx  context.Context
+	svc  *service.Service
 }
 
 func TestCreateOrder_CheckEventsInDatabase(t *testing.T) {
@@ -29,7 +29,7 @@ func TestCreateOrder_CheckEventsInDatabase(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status: model.StatusPending,
+		Status:      model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -39,18 +39,11 @@ func TestCreateOrder_CheckEventsInDatabase(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, order.ID, got.ID)
 	require.Equal(t, model.StatusPending, got.Status)
+
 	events, err := mockHelper.svc.GetOrderEvents(mockHelper.ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, events)
-	found := false
-	for _, e := range events {
-		if e.OrderID == order.ID && e.EventType == model.EventCreated {
-			found = true
-			require.Equal(t, model.SourceHTTPSync, e.Source)
-			break
-		}
-	}
-	require.True(t, found, "created event not found")
+	requireOrderEvent(t, events, order.ID, model.EventCreated, model.SourceHTTPSync)
 }
 
 func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
@@ -58,7 +51,7 @@ func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status: model.StatusPending,
+		Status:      model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -67,7 +60,7 @@ func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
 	updateOrder := model.Order{
 		ID:          order.ID,
 		CustomerID:  order.CustomerID,
-		Status: model.StatusCompleted,
+		Status:      model.StatusCompleted,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -77,34 +70,19 @@ func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, order.ID, got.ID)
 	require.Equal(t, model.StatusCompleted, got.Status)
+
 	events, err := mockHelper.svc.GetOrderEvents(mockHelper.ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, events)
-	var created, updated bool
-	for _, e := range events {
-		if e.OrderID != order.ID {
-			continue
-		}
-		switch e.EventType {
-		case model.EventCreated:
-			created = true
-			require.Equal(t, model.SourceHTTPSync, e.Source)
-		case model.EventUpdated:
-			updated = true
-			require.Equal(t, model.SourceHTTPSync, e.Source)
-		}
-	}
-	require.True(t, created, "created event not found")
-	require.True(t, updated, "updated event not found")
+	requireOrderEvents(t, events, order.ID, model.SourceHTTPSync, model.EventCreated, model.EventUpdated)
 }
-
 
 func TestSoftDeleteOrder_CheckEventsInDatabase(t *testing.T) {
 	mockHelper := getMocks(t)
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status: model.StatusPending,
+		Status:      model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -115,30 +93,16 @@ func TestSoftDeleteOrder_CheckEventsInDatabase(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, order.ID, got.ID)
 	require.Equal(t, model.StatusDeleted, got.Status)
+
 	events, err := mockHelper.svc.GetOrderEvents(mockHelper.ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, events)
-	var created, deleted bool
-	for _, e := range events {
-		if e.OrderID != order.ID {
-			continue
-		}
-		switch e.EventType {
-		case model.EventCreated:
-			created = true
-			require.Equal(t, model.SourceHTTPSync, e.Source)
-		case model.EventDeleted:
-			deleted = true
-			require.Equal(t, model.SourceHTTPSync, e.Source)
-		}
-	}
-	require.True(t, created, "created event not found")
-	require.True(t, deleted, "updated event not found")
+	requireOrderEvents(t, events, order.ID, model.SourceHTTPSync, model.EventCreated, model.EventDeleted)
 }
 
 func TestGetOrderNotFound_CheckInDatabase(t *testing.T) {
 	mockHelper := getMocks(t)
- 
+
 	_, err := mockHelper.svc.GetOrder(mockHelper.ctx, uuid.New().String())
 	require.ErrorIs(t, err, model.ErrOrderNotFound)
 	events, err := mockHelper.svc.GetOrderEvents(mockHelper.ctx)
@@ -152,7 +116,7 @@ func TestDuplicateCreateOrder_CheckInDatabase(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status: model.StatusPending,
+		Status:      model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -162,7 +126,7 @@ func TestDuplicateCreateOrder_CheckInDatabase(t *testing.T) {
 	require.Contains(t, err.Error(), "duplicate key value violates unique constraint \"orders_pkey\"")
 }
 
-func getMocks (t *testing.T) *Mocks {
+func getMocks(t *testing.T) *Mocks {
 	t.Helper()
 	pool := setupPostgres(t)
 	ctx := t.Context()
@@ -176,7 +140,37 @@ func getMocks (t *testing.T) *Mocks {
 	)
 	return &Mocks{
 		pool: pool,
-		ctx: ctx,
-		svc: svc,
+		ctx:  ctx,
+		svc:  svc,
+	}
+}
+
+func requireOrderEvent(
+	t *testing.T,
+	events []model.OrderEvent,
+	orderID uuid.UUID,
+	eventType model.EventType,
+	source model.EventSource,
+) {
+	t.Helper()
+	for _, e := range events {
+		if e.OrderID == orderID && e.EventType == eventType {
+			require.Equal(t, source, e.Source)
+			return
+		}
+	}
+	require.Failf(t, "event not found", "order_id=%s event_type=%s source=%s", orderID, eventType, source)
+}
+
+func requireOrderEvents(
+	t *testing.T,
+	events []model.OrderEvent,
+	orderID uuid.UUID,
+	source model.EventSource,
+	types ...model.EventType,
+) {
+	t.Helper()
+	for _, typ := range types {
+		requireOrderEvent(t, events, orderID, typ, source)
 	}
 }

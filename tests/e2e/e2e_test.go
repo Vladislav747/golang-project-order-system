@@ -59,13 +59,5 @@ func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP() {
 	var events []model.OrderEvent
 	s.Require().NoError(json.Unmarshal(body, &events))
 
-	var found bool
-	for _, e := range events {
-		if e.OrderID == orderID && e.EventType == model.EventCreated {
-			found = true
-			s.Equal(model.SourceHTTPSync, e.Source)
-			break
-		}
-	}
-	s.True(found, "created event not found")
+	requireOrderEvent(s.T(), events, orderID, model.EventCreated, model.SourceHTTPSync)
 }

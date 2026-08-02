@@ -48,16 +48,7 @@ func TestCreateOrder_AsyncViaKafka(t *testing.T) {
 
 	events, err := m.svc.GetOrderEvents(m.ctx)
 	require.NoError(t, err)
-
-	var found bool
-	for _, e := range events {
-		if e.OrderID == order.ID && e.EventType == model.EventCreated {
-			found = true
-			require.Equal(t, model.SourceKafka, e.Source)
-			break
-		}
-	}
-	require.True(t, found, "kafka created event not found")
+	requireOrderEvent(t, events, order.ID, model.EventCreated, model.SourceKafka)
 }
 
 func TestUpdateOrder_AsyncViaKafka(t *testing.T) {
@@ -84,16 +75,7 @@ func TestUpdateOrder_AsyncViaKafka(t *testing.T) {
 
 	events, err := m.svc.GetOrderEvents(m.ctx)
 	require.NoError(t, err)
-
-	var found bool
-	for _, e := range events {
-		if e.OrderID == order.ID && e.EventType == model.EventUpdated {
-			found = true
-			require.Equal(t, model.SourceKafka, e.Source)
-			break
-		}
-	}
-	require.True(t, found, "kafka updated event not found")
+	requireOrderEvent(t, events, order.ID, model.EventUpdated, model.SourceKafka)
 }
 
 func TestDeleteOrder_AsyncViaKafka(t *testing.T) {
@@ -117,16 +99,7 @@ func TestDeleteOrder_AsyncViaKafka(t *testing.T) {
 
 	events, err := m.svc.GetOrderEvents(m.ctx)
 	require.NoError(t, err)
-
-	var found bool
-	for _, e := range events {
-		if e.OrderID == order.ID && e.EventType == model.EventDeleted {
-			found = true
-			require.Equal(t, model.SourceKafka, e.Source)
-			break
-		}
-	}
-	require.True(t, found, "kafka deleted event not found")
+	requireOrderEvent(t, events, order.ID, model.EventDeleted, model.SourceKafka)
 }
 
 func getAsyncMocks(t *testing.T) *AsyncMocks {
