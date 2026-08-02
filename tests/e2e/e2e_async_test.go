@@ -35,7 +35,7 @@ func (s *OrderAsyncE2ESuite) TestCreateOrder_AsyncViaKafka() {
 	payload := model.Order{
 		ID:          orderID,
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1500,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -54,7 +54,7 @@ func (s *OrderAsyncE2ESuite) TestCreateOrder_AsyncViaKafka() {
 		if err := json.Unmarshal(body, &got); err != nil {
 			return false
 		}
-		return got.ID == orderID && got.Status == "pending"
+		return got.ID == orderID && got.Status == model.StatusPending
 	}, 15*time.Second, 200*time.Millisecond, "order was not created by kafka consumer")
 
 	code, body = doJSON(s.T(), s.client, http.MethodGet, "/order-events", nil)

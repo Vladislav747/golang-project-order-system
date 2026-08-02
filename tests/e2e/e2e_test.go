@@ -35,7 +35,7 @@ func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP() {
 	payload := model.Order{
 		ID:          orderID,
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1500,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -51,7 +51,7 @@ func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP() {
 	var got model.Order
 	s.Require().NoError(json.Unmarshal(body, &got))
 	s.Equal(orderID, got.ID)
-	s.Equal("pending", got.Status)
+	s.Equal(model.StatusPending, got.Status)
 
 	code, body = doJSON(s.T(), s.client, http.MethodGet, "/order-events", nil)
 	s.Require().Equal(http.StatusOK, code, "body=%s", body)

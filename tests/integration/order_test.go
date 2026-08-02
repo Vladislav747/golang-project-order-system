@@ -29,7 +29,7 @@ func TestCreateOrder_CheckEventsInDatabase(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -38,7 +38,7 @@ func TestCreateOrder_CheckEventsInDatabase(t *testing.T) {
 	got, err := mockHelper.svc.GetOrder(mockHelper.ctx, order.ID.String())
 	require.NoError(t, err)
 	require.Equal(t, order.ID, got.ID)
-	require.Equal(t, "pending", got.Status)
+	require.Equal(t, model.StatusPending, got.Status)
 	events, err := mockHelper.svc.GetOrderEvents(mockHelper.ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, events)
@@ -58,7 +58,7 @@ func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -67,7 +67,7 @@ func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
 	updateOrder := model.Order{
 		ID:          order.ID,
 		CustomerID:  order.CustomerID,
-		Status:      "shipped",
+		Status: model.StatusCompleted,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -76,7 +76,7 @@ func TestUpdateOrder_CheckEventsInDatabase(t *testing.T) {
 	got, err := mockHelper.svc.GetOrder(mockHelper.ctx, order.ID.String())
 	require.NoError(t, err)
 	require.Equal(t, order.ID, got.ID)
-	require.Equal(t, "shipped", got.Status)
+	require.Equal(t, model.StatusCompleted, got.Status)
 	events, err := mockHelper.svc.GetOrderEvents(mockHelper.ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, events)
@@ -104,7 +104,7 @@ func TestSoftDeleteOrder_CheckEventsInDatabase(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -114,7 +114,7 @@ func TestSoftDeleteOrder_CheckEventsInDatabase(t *testing.T) {
 	got, err := mockHelper.svc.GetOrder(mockHelper.ctx, order.ID.String())
 	require.NoError(t, err)
 	require.Equal(t, order.ID, got.ID)
-	require.Equal(t, "deleted", got.Status)
+	require.Equal(t, model.StatusDeleted, got.Status)
 	events, err := mockHelper.svc.GetOrderEvents(mockHelper.ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, events)
@@ -152,7 +152,7 @@ func TestDuplicateCreateOrder_CheckInDatabase(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1000,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),

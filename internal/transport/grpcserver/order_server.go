@@ -259,38 +259,17 @@ func toProto(o model.Order) *orderv1.Order {
 	}
 }
 
-func statusFromProto(s orderv1.StatusType) (string, error) {
-	switch s {
-	case orderv1.StatusType_UNSPECIFIED:
-		return "", errors.New("status is required")
-	case orderv1.StatusType_CREATED:
-		return "created", nil
-	case orderv1.StatusType_PENDING:
-		return "pending", nil
-	case orderv1.StatusType_COMPLETED:
-		return "completed", nil
-	case orderv1.StatusType_FAILED:
-		return "failed", nil
-	case orderv1.StatusType_DELETED:
-		return "deleted", nil
-	default:
-		return "", errors.New("invalid status")
+func statusFromProto(s orderv1.StatusType) (model.Status, error) {
+	status := model.Status(s)
+	if !status.IsValid() {
+		return model.StatusUnspecified, errors.New("status is required")
 	}
+	return status, nil
 }
 
-func statusToProto(s string) orderv1.StatusType {
-	switch s {
-	case "created":
-		return orderv1.StatusType_CREATED
-	case "pending":
-		return orderv1.StatusType_PENDING
-	case "completed":
-		return orderv1.StatusType_COMPLETED
-	case "failed":
-		return orderv1.StatusType_FAILED
-	case "deleted":
-		return orderv1.StatusType_DELETED
-	default:
+func statusToProto(s model.Status) orderv1.StatusType {
+	if !s.IsValid() {
 		return orderv1.StatusType_UNSPECIFIED
 	}
+	return orderv1.StatusType(s)
 }
