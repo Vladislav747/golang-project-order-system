@@ -12,7 +12,7 @@ import (
 )
 
 func requireOrderEvent(
-	t *testing.T,
+	t testing.TB,
 	events []model.OrderEvent,
 	orderID uuid.UUID,
 	eventType model.EventType,

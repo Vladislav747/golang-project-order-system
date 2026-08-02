@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func waitReady(t *testing.T, client *http.Client) {
+// waitReady ждёт уже запущенный сервис (e2e не поднимает стек сам).
+// /metrics не зависит от данных в БД, в отличие от /orders.
+func waitReady(t testing.TB, client *http.Client) {
 	t.Helper()
 
-	url := baseURL() + "/orders"
+	url := baseURL() + "/metrics"
 	deadline := time.Now().Add(60 * time.Second)
 	var lastErr error
 
@@ -44,7 +46,7 @@ func waitReady(t *testing.T, client *http.Client) {
 	t.Fatalf("service not ready at %s: %v (запусти стек: docker compose up / make local-run)", url, lastErr)
 }
 
-func doJSON(t *testing.T, client *http.Client, method, path string, body any) (int, []byte) {
+func doJSON(t testing.TB, client *http.Client, method, path string, body any) (int, []byte) {
 	t.Helper()
 
 	var reader io.Reader
