@@ -11,7 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /order-service ./cmd/order-service
 
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates wget
 
 WORKDIR /app
 

@@ -15,6 +15,7 @@ import (
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
+	"github.com/Vladislav747/golang-project-order-system/internal/handler/health"
 	orderHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
 	orderEventHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order_event"
 	"github.com/Vladislav747/golang-project-order-system/internal/pkg/logger"
@@ -43,10 +44,11 @@ func main() {
 
 	orderHandler := orderHandler.NewHandler(svc, logger, provider)
 	orderEventHandler := orderEventHandler.NewHandler(svc, logger, provider)
+	healthHandler := health.NewHandler(health.NewDBChecker(pool))
 
 	// Регистрируем маршруты
 	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux, logger, orderHandler, orderEventHandler)
+	handler.RegisterRoutes(mux, logger, orderHandler, orderEventHandler, healthHandler)
 
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.Port),
