@@ -21,6 +21,7 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/pkg/logger"
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
+	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	grpcserver "github.com/Vladislav747/golang-project-order-system/internal/transport/grpcserver"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
@@ -199,7 +200,8 @@ func mustInitProducer(cfg *config.Config, logger *zap.Logger) (*kafka.Producer, 
 func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) *service.Service {
 	repositoryOrder := repositoryOrder.NewRepository(pool, logger)
 	repositoryOrderEvent := repositoryOrderEvent.NewRepository(pool, logger)
-	return service.NewService(repositoryOrder, repositoryOrderEvent, pool, producer, logger)
+	repositoryOutbox := repositoryOutbox.NewRepository(pool, logger)
+	return service.NewService(repositoryOrder, repositoryOrderEvent, repositoryOutbox, pool, producer, logger)
 }
 
 func mustStartConsumer(cfg *config.Config, svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {

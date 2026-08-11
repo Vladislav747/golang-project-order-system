@@ -17,6 +17,7 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
+	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
@@ -117,6 +118,7 @@ func getAsyncMocks(t *testing.T) *AsyncMocks {
 	svc := service.NewService(
 		repositoryOrder.NewRepository(pool, logger),
 		repositoryOrderEvent.NewRepository(pool, logger),
+		repositoryOutbox.NewRepository(pool, logger),
 		pool,
 		producer,
 		logger,

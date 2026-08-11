@@ -69,7 +69,16 @@ func (s *Service) CreateOrderFromKafka(ctx context.Context, order model.Order) e
 			s.logger.Error("failed to build order event", zap.Error(err))
 			return err
 		}
-		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
+		if err := s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event); err != nil {
+			return err
+		}
+
+		msg, err := buildOutboxMessage(order.ID, model.AggregateOrder, model.TopicOrderEvents, model.EventTypeOrderCreated, order)
+		if err != nil {
+			s.logger.Error("failed to build outbox message", zap.Error(err))
+			return err
+		}
+		return s.repositoryOutbox.CreateOutboxMessage(ctx, tx, msg)
 	})
 }
 
@@ -84,7 +93,17 @@ func (s *Service) UpdateOrderFromKafka(ctx context.Context, order model.Order) e
 			s.logger.Error("failed to build order event", zap.Error(err))
 			return err
 		}
-		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
+
+		if err := s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event); err != nil {
+			return err
+		}
+
+		msg, err := buildOutboxMessage(order.ID, model.AggregateOrder, model.TopicOrderEvents, model.EventTypeOrderUpdated, order)
+		if err != nil {
+			s.logger.Error("failed to build outbox message", zap.Error(err))
+			return err
+		}
+		return s.repositoryOutbox.CreateOutboxMessage(ctx, tx, msg)
 	})
 }
 
@@ -105,7 +124,16 @@ func (s *Service) DeleteOrderFromKafka(ctx context.Context, id string) error {
 			s.logger.Error("failed to build order event", zap.Error(err))
 			return err
 		}
-		return s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event)
+		if err := s.repositoryOrderEvent.CreateOrderEvent(ctx, tx, event); err != nil {
+			return err
+		}
+
+		msg, err := buildOutboxMessage(orderIDUUID, model.AggregateOrder, model.TopicOrderEvents, model.EventTypeOrderDeleted, nil)
+		if err != nil {
+			s.logger.Error("failed to build outbox message", zap.Error(err))
+			return err
+		}
+		return s.repositoryOutbox.CreateOutboxMessage(ctx, tx, msg)
 	})
 }
 

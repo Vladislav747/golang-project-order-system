@@ -25,6 +25,10 @@ type RepositoryOrderEvent interface {
 	GetOrderEvents(ctx context.Context) ([]model.OrderEvent, error)
 }
 
+type RepositoryOutbox interface {
+	CreateOutboxMessage(ctx context.Context, tx pgx.Tx, message model.OutboxMessage) error
+}
+
 type TxManager interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
@@ -32,6 +36,7 @@ type TxManager interface {
 type Service struct {
 	repositoryOrder      RepositoryOrder
 	repositoryOrderEvent RepositoryOrderEvent
+	repositoryOutbox     RepositoryOutbox
 	txManager            TxManager
 	producer             *kafka.Producer
 	logger               *zap.Logger
@@ -40,12 +45,14 @@ type Service struct {
 func NewService(
 	repositoryOrder RepositoryOrder,
 	repositoryOrderEvent RepositoryOrderEvent,
+	repositoryOutbox RepositoryOutbox,
 	txManager TxManager, producer *kafka.Producer,
 	logger *zap.Logger,
 ) *Service {
 	return &Service{
 		repositoryOrder:      repositoryOrder,
 		repositoryOrderEvent: repositoryOrderEvent,
+		repositoryOutbox:     repositoryOutbox,
 		txManager:            txManager,
 		producer:             producer,
 		logger:               logger,

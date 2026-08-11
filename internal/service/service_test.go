@@ -16,7 +16,7 @@ import (
 
 func TestNewService(t *testing.T) {
 	t.Parallel()
-	_, _, _, _, svc := createMocks(t)
+	_, _, _, _, _, svc := createMocks(t)
 
 	if svc == nil {
 		t.Fatal("expected service instance")
@@ -27,7 +27,7 @@ func TestCreateOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
+	repoOrder, repoEvent, _, txManager, mockTx, svc := createMocks(t)
 
 	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
@@ -55,7 +55,7 @@ func TestGetOrders_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, _, _, _, svc := createMocks(t)
+	repoOrder, _, _, _, _, svc := createMocks(t)
 
 	repoOrder.EXPECT().
 		GetOrders(mock.Anything).
@@ -71,7 +71,7 @@ func TestDeleteOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
+	repoOrder, repoEvent, _, txManager, mockTx, svc := createMocks(t)
 
 	orderID := "6ba7b810-9dad-11d1-80b4-00c04fd43023"
 
@@ -99,7 +99,7 @@ func TestUpdateOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, repoEvent, txManager, mockTx, svc := createMocks(t)
+	repoOrder, repoEvent, _, txManager, mockTx, svc := createMocks(t)
 
 	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
@@ -127,7 +127,7 @@ func TestGetOrder_RepositoryCalled(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 
-	repoOrder, _, _, _, svc := createMocks(t)
+	repoOrder, _, _, _, _, svc := createMocks(t)
 
 	expected := model.Order{Status: model.StatusPending}
 
@@ -143,6 +143,7 @@ func TestGetOrder_RepositoryCalled(t *testing.T) {
 func createMocks(t *testing.T) (
 	*mocks.MockRepositoryOrder,
 	*mocks.MockRepositoryOrderEvent,
+	*mocks.MockRepositoryOutbox,
 	*mocks.MockTxManager,
 	*mocks.MockTx,
 	*Service,
@@ -150,10 +151,11 @@ func createMocks(t *testing.T) (
 	t.Helper()
 	repoOrder := mocks.NewMockRepositoryOrder(t)
 	repoEvent := mocks.NewMockRepositoryOrderEvent(t)
+	repoOutbox := mocks.NewMockRepositoryOutbox(t)
 	txManager := mocks.NewMockTxManager(t)
 	mockTx := mocks.NewMockTx(t)
 
-	svc := NewService(repoOrder, repoEvent, txManager, nil, zap.NewNop())
+	svc := NewService(repoOrder, repoEvent, repoOutbox, txManager, nil, zap.NewNop())
 
-	return repoOrder, repoEvent, txManager, mockTx, svc
+	return repoOrder, repoEvent, repoOutbox, txManager, mockTx, svc
 }
