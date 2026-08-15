@@ -24,7 +24,7 @@ func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *repository {
 func (r *repository) CreateOrderEvent(ctx context.Context, tx pgx.Tx, order model.OrderEvent) error {
 
 	sqlQuery := sqlx.Rebind(sqlx.DOLLAR, `
-		INSERT INTO order_events (id, order_id, event_type, topic, payload, created_at)
+		INSERT INTO order_events (id, order_id, event_type, source, payload, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`)
 

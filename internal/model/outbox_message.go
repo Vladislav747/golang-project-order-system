@@ -33,5 +33,5 @@ type OutboxMessage struct {
 	CreatedAt     time.Time       `json:"created_at"`
 	PublishedAt   *time.Time      `json:"published_at,omitempty"`
 	Attempts      int             `json:"attempts"`
-	LastError     string          `json:"last_error,omitempty"`
+	LastError     *string         `json:"last_error,omitempty"`
 }
