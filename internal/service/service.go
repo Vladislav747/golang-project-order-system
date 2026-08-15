@@ -29,6 +29,7 @@ type RepositoryOutbox interface {
 	CreateOutboxMessage(ctx context.Context, tx pgx.Tx, message model.OutboxMessage) error
 	GetOutboxMessagesUnpublished(ctx context.Context, limit int) ([]model.OutboxMessage, error)
 	MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
+	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error
 }
 
 type TxManager interface {

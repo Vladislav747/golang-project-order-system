@@ -28,6 +28,7 @@ type TxManager interface {
 type OutboxRepository interface {
 	GetOutboxMessagesUnpublished(ctx context.Context, limit int) ([]model.OutboxMessage, error)
 	MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
+	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error
 }
 
 func NewOutboxRelay(repo OutboxRepository, producer *kafka.Producer, logger *zap.Logger, interval time.Duration, limit int, txManager TxManager) *OutboxRelay {
@@ -61,9 +62,16 @@ func (r *OutboxRelay) relayMessages(ctx context.Context) {
 	}
 	// Перебираем все сообщения и публикуем их в Kafka
 	for _, msg := range msgs {
-		err = r.producer.PublishEvent(string(msg.Topic), msg.Payload)
-		if err != nil {
-			r.logger.Error("relayMessages. failed to publish outbox event", zap.Error(err))
+		publishErr := r.producer.PublishEvent(string(msg.Topic), msg.Payload)
+		if publishErr != nil {
+			r.logger.Error("relayMessages. failed to publish outbox event", zap.Error(publishErr))
+			err = pgx.BeginFunc(ctx, r.txManager, func(tx pgx.Tx) error {
+				return r.repo.MarkOutboxMessageFailed(ctx, tx, msg.ID, publishErr.Error())
+			})
+			if err != nil {
+				r.logger.Error("relayMessages. failed to mark outbox message failed", zap.Error(err))
+				continue
+			}
 			continue
 		}
 

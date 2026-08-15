@@ -133,6 +133,55 @@ func (_c *MockRepositoryOutbox_GetOutboxMessagesUnpublished_Call) RunAndReturn(r
 	return _c
 }
 
+// MarkOutboxMessageFailed provides a mock function with given fields: ctx, tx, id, lastError
+func (_m *MockRepositoryOutbox) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error {
+	ret := _m.Called(ctx, tx, id, lastError)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkOutboxMessageFailed")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, uuid.UUID, string) error); ok {
+		r0 = rf(ctx, tx, id, lastError)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepositoryOutbox_MarkOutboxMessageFailed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkOutboxMessageFailed'
+type MockRepositoryOutbox_MarkOutboxMessageFailed_Call struct {
+	*mock.Call
+}
+
+// MarkOutboxMessageFailed is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tx pgx.Tx
+//   - id uuid.UUID
+//   - lastError string
+func (_e *MockRepositoryOutbox_Expecter) MarkOutboxMessageFailed(ctx interface{}, tx interface{}, id interface{}, lastError interface{}) *MockRepositoryOutbox_MarkOutboxMessageFailed_Call {
+	return &MockRepositoryOutbox_MarkOutboxMessageFailed_Call{Call: _e.mock.On("MarkOutboxMessageFailed", ctx, tx, id, lastError)}
+}
+
+func (_c *MockRepositoryOutbox_MarkOutboxMessageFailed_Call) Run(run func(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string)) *MockRepositoryOutbox_MarkOutboxMessageFailed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(uuid.UUID), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockRepositoryOutbox_MarkOutboxMessageFailed_Call) Return(_a0 error) *MockRepositoryOutbox_MarkOutboxMessageFailed_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepositoryOutbox_MarkOutboxMessageFailed_Call) RunAndReturn(run func(context.Context, pgx.Tx, uuid.UUID, string) error) *MockRepositoryOutbox_MarkOutboxMessageFailed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MarkOutboxMessagePublished provides a mock function with given fields: ctx, tx, id
 func (_m *MockRepositoryOutbox) MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 	ret := _m.Called(ctx, tx, id)

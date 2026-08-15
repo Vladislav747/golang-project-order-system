@@ -64,7 +64,6 @@ func (r *repository) MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, 
 	sqlQuery := `
         UPDATE outbox
 		SET published_at = NOW(),
-			attempts = attempts + 1,
 			last_error = NULL
 		WHERE id = $1;
     `
@@ -72,6 +71,23 @@ func (r *repository) MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, 
 	_, err := tx.Exec(ctx, sqlQuery, id)
 	if err != nil {
 		r.logger.Error("failed to update outbox message published in repository", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (r *repository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error {
+
+	sqlQuery := `
+        UPDATE outbox
+		SET attempts = attempts + 1,
+			last_error = $2
+		WHERE id = $1;
+    `
+
+	_, err := tx.Exec(ctx, sqlQuery, id, lastError)
+	if err != nil {
+		r.logger.Error("failed to update outbox message failed in repository", zap.Error(err))
 		return err
 	}
 	return nil
