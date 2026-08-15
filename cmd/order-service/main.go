@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -25,6 +26,7 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	grpcserver "github.com/Vladislav747/golang-project-order-system/internal/transport/grpcserver"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
+	"github.com/Vladislav747/golang-project-order-system/internal/worker"
 )
 
 func main() {
@@ -40,6 +42,8 @@ func main() {
 	}
 	svc := mustInitService(pool, producer, logger)
 	consumer, cancel, consumerWG := mustStartConsumer(cfg, svc, logger)
+
+	relayCancel, relayWG := mustStartOutboxRelay(pool, producer, logger)
 
 	provider := config.NewProvider(cfg)
 
@@ -103,7 +107,19 @@ func main() {
 	}()
 
 	// Запускаем graceful shutdown
-	gracefulShutdown(server, grpcSrv, logger, consumer, cancel, consumerWG, producer, provider, watchCancel)
+	gracefulShutdown(
+		server,
+		grpcSrv,
+		logger,
+		consumer,
+		cancel,
+		consumerWG,
+		producer,
+		provider,
+		watchCancel,
+		relayCancel,
+		relayWG,
+	)
 }
 
 func gracefulShutdown(
@@ -116,6 +132,8 @@ func gracefulShutdown(
 	producer *kafka.Producer,
 	provider *config.Provider,
 	watchCancel context.CancelFunc,
+	outboxCancel context.CancelFunc,
+	outboxWG *sync.WaitGroup,
 ) {
 	// Ждем сигналы прерывания
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -148,6 +166,11 @@ func gracefulShutdown(
 	}
 	// горутина точно завершилась - consumer.Run завершится только после завершения работы консьюмера
 	consumerWG.Wait()
+
+	logger.Info("shutting down outbox relay")
+	outboxCancel()
+	// горутина точно завершилась - relay.Run завершится только после завершения работы relay
+	outboxWG.Wait()
 
 	logger.Info("shutting down producer")
 	// Закрываем producer
@@ -229,4 +252,26 @@ func mustStartConsumer(cfg *config.Config, svc *service.Service, logger *zap.Log
 	}()
 
 	return consumer, cancel, &wg
+}
+
+func mustStartOutboxRelay(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) (context.CancelFunc, *sync.WaitGroup) {
+	repositoryOutbox := repositoryOutbox.NewRepository(pool, logger)
+	relay := worker.NewOutboxRelay(
+		repositoryOutbox,
+		producer,
+		logger,
+		time.Second, // interval
+		100,         // limit
+		pool,        // TxManager
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		relay.Run(ctx)
+	}()
+	return cancel, &wg
 }

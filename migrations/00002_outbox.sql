@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS outbox (
-     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     -- для маршрутизации / идемпотентности
     aggregate_type  VARCHAR(50)  NOT NULL,  -- 'order'
     aggregate_id    UUID         NOT NULL,  -- order.id

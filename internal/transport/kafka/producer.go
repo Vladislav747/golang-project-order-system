@@ -52,6 +52,19 @@ func (p *Producer) SendMessage(message OrderCommandMessage) error {
 	return nil
 }
 
+func (p *Producer) PublishEvent(topic string, value []byte) error {
+	_, _, err := p.producer.SendMessage(&sarama.ProducerMessage{
+		Topic: topic,
+		Value: sarama.ByteEncoder(value),
+	})
+
+	if err != nil {
+		p.logger.Error("failed to publish outbox event", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
 func (p *Producer) Close() error {
 	return p.producer.Close()
 }
