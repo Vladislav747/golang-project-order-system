@@ -33,7 +33,7 @@ func TestCreateOrder_AsyncViaKafka(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1500,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -43,21 +43,12 @@ func TestCreateOrder_AsyncViaKafka(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		got, err := m.svc.GetOrder(m.ctx, order.ID.String())
-		return err == nil && got.ID == order.ID && got.Status == "pending"
+		return err == nil && got.ID == order.ID && got.Status == model.StatusPending
 	}, 15*time.Second, 200*time.Millisecond, "order was not created by kafka consumer")
 
 	events, err := m.svc.GetOrderEvents(m.ctx)
 	require.NoError(t, err)
-
-	var found bool
-	for _, e := range events {
-		if e.OrderID == order.ID && e.EventType == model.EventCreated {
-			found = true
-			require.Equal(t, model.SourceKafka, e.Source)
-			break
-		}
-	}
-	require.True(t, found, "kafka created event not found")
+	requireOrderEvent(t, events, order.ID, model.EventCreated, model.SourceKafka)
 }
 
 func TestUpdateOrder_AsyncViaKafka(t *testing.T) {
@@ -66,7 +57,7 @@ func TestUpdateOrder_AsyncViaKafka(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1500,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -74,26 +65,17 @@ func TestUpdateOrder_AsyncViaKafka(t *testing.T) {
 	require.NoError(t, m.svc.CreateOrder(m.ctx, order))
 
 	updated := order
-	updated.Status = "shipped"
+	updated.Status = model.StatusCompleted
 	require.NoError(t, m.svc.UpdateOrderKafka(m.ctx, updated))
 
 	require.Eventually(t, func() bool {
 		got, err := m.svc.GetOrder(m.ctx, order.ID.String())
-		return err == nil && got.Status == "shipped"
+		return err == nil && got.Status == model.StatusCompleted
 	}, 15*time.Second, 200*time.Millisecond, "order was not updated by kafka consumer")
 
 	events, err := m.svc.GetOrderEvents(m.ctx)
 	require.NoError(t, err)
-
-	var found bool
-	for _, e := range events {
-		if e.OrderID == order.ID && e.EventType == model.EventUpdated {
-			found = true
-			require.Equal(t, model.SourceKafka, e.Source)
-			break
-		}
-	}
-	require.True(t, found, "kafka updated event not found")
+	requireOrderEvent(t, events, order.ID, model.EventUpdated, model.SourceKafka)
 }
 
 func TestDeleteOrder_AsyncViaKafka(t *testing.T) {
@@ -102,7 +84,7 @@ func TestDeleteOrder_AsyncViaKafka(t *testing.T) {
 	order := model.Order{
 		ID:          uuid.New(),
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status: model.StatusPending,
 		TotalAmount: 1500,
 		Currency:    "USD",
 		Items:       json.RawMessage(`[]`),
@@ -112,21 +94,12 @@ func TestDeleteOrder_AsyncViaKafka(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		got, err := m.svc.GetOrder(m.ctx, order.ID.String())
-		return err == nil && got.Status == "deleted"
+		return err == nil && got.Status == model.StatusDeleted
 	}, 15*time.Second, 200*time.Millisecond, "order was not soft-deleted by kafka consumer")
 
 	events, err := m.svc.GetOrderEvents(m.ctx)
 	require.NoError(t, err)
-
-	var found bool
-	for _, e := range events {
-		if e.OrderID == order.ID && e.EventType == model.EventDeleted {
-			found = true
-			require.Equal(t, model.SourceKafka, e.Source)
-			break
-		}
-	}
-	require.True(t, found, "kafka deleted event not found")
+	requireOrderEvent(t, events, order.ID, model.EventDeleted, model.SourceKafka)
 }
 
 func getAsyncMocks(t *testing.T) *AsyncMocks {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
@@ -21,10 +22,11 @@ func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *repository {
 }
 
 func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
-	sqlQuery := `
+
+	sqlQuery := sqlx.Rebind(sqlx.DOLLAR, `
 		INSERT INTO orders (id, customer_id, status, total_amount, currency, items)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`
+		VALUES (?, ?, ?, ?, ?, ?)
+	`)
 
 	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.CustomerID, order.Status, order.TotalAmount, order.Currency, order.Items)
 	if err != nil {

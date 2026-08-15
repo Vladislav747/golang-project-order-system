@@ -2,11 +2,11 @@ package grpcserver
 
 import (
 	"context"
-	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
@@ -54,9 +54,33 @@ func toProtoOrderEvent(e model.OrderEvent) *order_event_v1.OrderEvent {
 	return &order_event_v1.OrderEvent{
 		Id:        e.ID.String(),
 		OrderId:   e.OrderID.String(),
-		EventType: string(e.EventType),
-		Source:    string(e.Source),
+		EventType: toProtoEventType(e.EventType),
+		Source:    toProtoSource(e.Source),
 		Payload:   e.Payload,
-		CreatedAt: e.CreatedAt.Format(time.RFC3339),
+		CreatedAt: timestamppb.New(e.CreatedAt),
+	}
+}
+
+func toProtoEventType(t model.EventType) order_event_v1.EventType {
+	switch t {
+	case model.EventCreated:
+		return order_event_v1.EventType_CREATED
+	case model.EventUpdated:
+		return order_event_v1.EventType_UPDATED
+	case model.EventDeleted:
+		return order_event_v1.EventType_DELETED
+	default:
+		return order_event_v1.EventType_CREATED
+	}
+}
+
+func toProtoSource(s model.EventSource) order_event_v1.EventSource {
+	switch s {
+	case model.SourceHTTPSync:
+		return order_event_v1.EventSource_HTTP_SYNC
+	case model.SourceKafka:
+		return order_event_v1.EventSource_KAFKA
+	default:
+		return order_event_v1.EventSource_UNSPECIFIED
 	}
 }

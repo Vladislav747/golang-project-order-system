@@ -33,7 +33,7 @@ func TestCreateOrder(t *testing.T) {
 
 	mockSvc.EXPECT().
 		CreateOrder(mock.Anything, mock.MatchedBy(func(o model.Order) bool {
-			return o.Status == "pending" && o.TotalAmount == 1500 && len(o.Items) > 0
+			return o.Status == model.StatusPending && o.TotalAmount == 1500 && len(o.Items) > 0
 		})).
 		Return(nil)
 
@@ -88,7 +88,7 @@ func TestGetOrder(t *testing.T) {
 		Return(model.Order{
 			ID:          id,
 			CustomerID:  uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd43023"),
-			Status:      "pending",
+			Status:      model.StatusPending,
 			TotalAmount: 1500,
 			Currency:    "USD",
 			Items:       json.RawMessage(`[{"sku":"A1","qty":1}]`),
@@ -116,7 +116,7 @@ func TestGetOrders(t *testing.T) {
 		Return([]model.Order{{
 			ID:          id,
 			CustomerID:  uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd43023"),
-			Status:      "pending",
+			Status:      model.StatusPending,
 			TotalAmount: 1500,
 			Currency:    "USD",
 			Items:       json.RawMessage(`[{"sku":"A1","qty":1}]`),
@@ -139,7 +139,7 @@ func TestUpdateOrder(t *testing.T) {
 
 	mockSvc.EXPECT().
 		UpdateOrder(mock.Anything, mock.MatchedBy(func(o model.Order) bool {
-			return o.Status == "pending" && o.TotalAmount == 1500 && len(o.Items) > 0
+			return o.Status == model.StatusPending && o.TotalAmount == 1500 && len(o.Items) > 0
 		})).
 		Return(nil)
 

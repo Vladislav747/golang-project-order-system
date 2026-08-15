@@ -9,63 +9,64 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
+	"github.com/ozontech/testo"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
+type T = *testo.T
+
 // OrderE2ESuite — black-box e2e против уже запущенного сервиса в sync-режиме.
 // Требует: стек поднят с processing_mode.mode: sync (например config/local.yaml).
 type OrderE2ESuite struct {
-	suite.Suite
+	testo.Suite[T]
 	client *http.Client
 }
 
 func TestOrderE2ESuite(t *testing.T) {
-	suite.Run(t, new(OrderE2ESuite))
+	testo.RunSuite(t, new(OrderE2ESuite))
 }
 
-func (s *OrderE2ESuite) SetupSuite() {
+func (s *OrderE2ESuite) BeforeAll(t T) {
 	s.client = &http.Client{Timeout: 10 * time.Second}
-	waitReady(s.T(), s.client)
+	waitReady(t, s.client)
 }
 
-func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP() {
+func (s *OrderE2ESuite) AfterAll(t T) {
+	if s.client != nil {
+		s.client.CloseIdleConnections()
+	}
+}
+
+func (s *OrderE2ESuite) TestCreateOrder_SyncViaHTTP(t T) {
 	orderID := uuid.New()
 	payload := model.Order{
 		ID:          orderID,
 		CustomerID:  uuid.New(),
-		Status:      "pending",
+		Status:      model.StatusPending,
 		TotalAmount: 1500,
 		Currency:    "USD",
-		Items:       json.RawMessage(`[]`),
+		Items:       json.RawMessage(`[{"sku":"A1","qty":1,"price":500},{"sku":"B2","qty":1,"price":500}]`),
 	}
 
-	code, body := doJSON(s.T(), s.client, http.MethodPost, "/order", payload)
-	s.Require().Equal(http.StatusCreated, code, "body=%s (сервис должен быть в sync)", body)
-	s.Require().Equal(orderID.String(), string(body))
+	code, body := doJSON(t, s.client, http.MethodPost, "/order", payload)
+	require.Equal(t, http.StatusCreated, code, "body=%s (сервис должен быть в sync)", body)
+	require.Equal(t, orderID.String(), string(body))
 
-	code, body = doJSON(s.T(), s.client, http.MethodGet, "/orders/"+orderID.String(), nil)
-	s.Require().Equal(http.StatusOK, code, "body=%s", body)
+	code, body = doJSON(t, s.client, http.MethodGet, "/orders/"+orderID.String(), nil)
+	require.Equal(t, http.StatusOK, code, "body=%s", body)
 
 	var got model.Order
-	s.Require().NoError(json.Unmarshal(body, &got))
-	s.Equal(orderID, got.ID)
-	s.Equal("pending", got.Status)
+	require.NoError(t, json.Unmarshal(body, &got))
+	require.Equal(t, orderID, got.ID)
+	require.Equal(t, model.StatusPending, got.Status)
 
-	code, body = doJSON(s.T(), s.client, http.MethodGet, "/order-events", nil)
-	s.Require().Equal(http.StatusOK, code, "body=%s", body)
+	code, body = doJSON(t, s.client, http.MethodGet, "/order-events", nil)
+	require.Equal(t, http.StatusOK, code, "body=%s", body)
 
 	var events []model.OrderEvent
-	s.Require().NoError(json.Unmarshal(body, &events))
+	require.NoError(t, json.Unmarshal(body, &events))
 
-	var found bool
-	for _, e := range events {
-		if e.OrderID == orderID && e.EventType == model.EventCreated {
-			found = true
-			s.Equal(model.SourceHTTPSync, e.Source)
-			break
-		}
-	}
-	s.True(found, "created event not found")
+	requireOrderEvent(t, events, orderID, model.EventCreated, model.SourceHTTPSync)
 }

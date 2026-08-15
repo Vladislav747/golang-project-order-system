@@ -1,0 +1,9 @@
+env: "local" #local, stg, prod
+processing_mode: 
+  mode: "sync" # sync, async
+http_server:
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 60s
+  graceful_shutdown_timeout: 10s
+  request_timeout: 10s

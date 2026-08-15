@@ -3,12 +3,12 @@ package grpcserver
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
@@ -200,10 +200,15 @@ func fromCreateRequest(req *orderv1.CreateOrderRequest) (model.Order, error) {
 		return model.Order{}, errors.New("invalid customer_id")
 	}
 
+	status, err := statusFromProto(req.GetStatus())
+	if err != nil {
+		return model.Order{}, err
+	}
+
 	return model.Order{
 		ID:          id,
 		CustomerID:  customerID,
-		Status:      req.GetStatus(),
+		Status:      status,
 		TotalAmount: req.GetTotalAmount(),
 		Currency:    req.GetCurrency(),
 		Items:       req.GetItems(),
@@ -221,10 +226,15 @@ func fromUpdateRequest(req *orderv1.UpdateOrderRequest) (model.Order, error) {
 		return model.Order{}, errors.New("invalid customer_id")
 	}
 
+	status, err := statusFromProto(req.GetStatus())
+	if err != nil {
+		return model.Order{}, err
+	}
+
 	return model.Order{
 		ID:          id,
 		CustomerID:  customerID,
-		Status:      req.GetStatus(),
+		Status:      status,
 		TotalAmount: req.GetTotalAmount(),
 		Currency:    req.GetCurrency(),
 		Items:       req.GetItems(),
@@ -232,19 +242,34 @@ func fromUpdateRequest(req *orderv1.UpdateOrderRequest) (model.Order, error) {
 }
 
 func toProto(o model.Order) *orderv1.Order {
-	deletedAt := ""
+	var deletedAt *timestamppb.Timestamp
 	if o.DeletedAt != nil {
-		deletedAt = o.DeletedAt.Format(time.RFC3339)
+		deletedAt = timestamppb.New(*o.DeletedAt)
 	}
 	return &orderv1.Order{
 		Id:          o.ID.String(),
 		CustomerId:  o.CustomerID.String(),
-		Status:      o.Status,
+		Status:      statusToProto(o.Status),
 		TotalAmount: o.TotalAmount,
 		Currency:    o.Currency,
 		Items:       o.Items,
-		CreatedAt:   o.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   o.UpdatedAt.Format(time.RFC3339),
+		CreatedAt:   timestamppb.New(o.CreatedAt),
+		UpdatedAt:   timestamppb.New(o.UpdatedAt),
 		DeletedAt:   deletedAt,
 	}
+}
+
+func statusFromProto(s orderv1.StatusType) (model.Status, error) {
+	status := model.Status(s)
+	if !status.IsValid() {
+		return model.StatusUnspecified, errors.New("status is required")
+	}
+	return status, nil
+}
+
+func statusToProto(s model.Status) orderv1.StatusType {
+	if !s.IsValid() {
+		return orderv1.StatusType_UNSPECIFIED
+	}
+	return orderv1.StatusType(s)
 }

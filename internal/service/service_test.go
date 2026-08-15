@@ -33,11 +33,11 @@ func TestCreateOrder_RepositoryCalled(t *testing.T) {
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
 	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
 
-	order := model.Order{Status: "pending"}
+	order := model.Order{Status: model.StatusPending}
 
 	repoOrder.EXPECT().
 		CreateOrder(mock.Anything, mockTx, mock.MatchedBy(func(o model.Order) bool {
-			return o.Status == "pending"
+			return o.Status == model.StatusPending
 		})).
 		Return(nil)
 
@@ -59,12 +59,12 @@ func TestGetOrders_RepositoryCalled(t *testing.T) {
 
 	repoOrder.EXPECT().
 		GetOrders(mock.Anything).
-		Return([]model.Order{{Status: "pending"}}, nil)
+		Return([]model.Order{{Status: model.StatusPending}}, nil)
 
 	orders, err := svc.GetOrders(ctx)
 	require.NoError(t, err)
 	require.Len(t, orders, 1)
-	require.Equal(t, "pending", orders[0].Status)
+	require.Equal(t, model.StatusPending, orders[0].Status)
 }
 
 func TestDeleteOrder_RepositoryCalled(t *testing.T) {
@@ -105,11 +105,11 @@ func TestUpdateOrder_RepositoryCalled(t *testing.T) {
 	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
 	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
 
-	order := model.Order{Status: "completed"}
+	order := model.Order{Status: model.StatusCompleted}
 
 	repoOrder.EXPECT().
 		UpdateOrder(mock.Anything, mockTx, mock.MatchedBy(func(o model.Order) bool {
-			return o.Status == "completed"
+			return o.Status == model.StatusCompleted
 		})).
 		Return(nil)
 
@@ -129,7 +129,7 @@ func TestGetOrder_RepositoryCalled(t *testing.T) {
 
 	repoOrder, _, _, _, svc := createMocks(t)
 
-	expected := model.Order{Status: "pending"}
+	expected := model.Order{Status: model.StatusPending}
 
 	repoOrder.EXPECT().
 		GetOrder(mock.Anything, "123").

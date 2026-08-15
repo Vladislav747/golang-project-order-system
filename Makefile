@@ -99,3 +99,12 @@ deploy-prod-down:
 
 deploy-prod-logs:
 	docker compose -f docker-compose.prod.yml logs -f go-app
+
+make-grpc-proto:
+	PATH="$$(go env GOPATH)/bin:$$PATH" protoc \
+		-I internal/api \
+		-I "$$(brew --prefix)/include" \
+		--go_out=internal/pkg/api --go_opt=paths=source_relative \
+		--go-grpc_out=internal/pkg/api --go-grpc_opt=paths=source_relative \
+		order/v1/order.proto \
+		order_event/v1/order_event.proto

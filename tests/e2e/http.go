@@ -14,37 +14,58 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func waitReady(t *testing.T, client *http.Client) {
+const (
+	readyzPath     = "/readyz"
+	readyzTimeout  = 60 * time.Second
+	readyzInterval = 500 * time.Millisecond
+)
+
+// waitReady ждёт readiness probe уже запущенного сервиса перед suite.
+// 200 — готов принимать трафик; 503 — зависимости ещё недоступны.
+func waitReady(t testing.TB, client *http.Client) {
 	t.Helper()
 
-	url := baseURL() + "/orders"
-	deadline := time.Now().Add(60 * time.Second)
+	url := baseURL() + readyzPath
+	deadline := time.Now().Add(readyzTimeout)
 	var lastErr error
 
 	for time.Now().Before(deadline) {
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
 			lastErr = err
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(readyzInterval)
 			continue
 		}
+
 		resp, err := client.Do(req)
-		if err == nil {
-			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				return
-			}
-			lastErr = fmt.Errorf("status %d", resp.StatusCode)
-		} else {
+		if err != nil {
 			lastErr = err
+			time.Sleep(readyzInterval)
+			continue
 		}
-		time.Sleep(500 * time.Millisecond)
+
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+
+		switch resp.StatusCode {
+		case http.StatusOK:
+			return
+		case http.StatusServiceUnavailable:
+			lastErr = fmt.Errorf("not ready: %s", bytes.TrimSpace(body))
+		default:
+			lastErr = fmt.Errorf("unexpected status %d: %s", resp.StatusCode, bytes.TrimSpace(body))
+		}
+		time.Sleep(readyzInterval)
 	}
 
-	t.Fatalf("service not ready at %s: %v (запусти стек: docker compose up / make local-run)", url, lastErr)
+	t.Fatalf(
+		"readiness probe failed at %s: %v (запусти стек: docker compose up / make local-run)",
+		url,
+		lastErr,
+	)
 }
 
-func doJSON(t *testing.T, client *http.Client, method, path string, body any) (int, []byte) {
+func doJSON(t testing.TB, client *http.Client, method, path string, body any) (int, []byte) {
 	t.Helper()
 
 	var reader io.Reader
