@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,8 +17,8 @@ type OutboxRelay struct {
 	repo      OutboxRepository
 	producer  *kafka.Producer
 	logger    *zap.Logger
-	interval  time.Duration
-	limit     int
+	interval  atomic.Int64
+	limit     atomic.Int64
 	txManager TxManager
 }
 
@@ -32,14 +33,15 @@ type OutboxRepository interface {
 }
 
 func NewOutboxRelay(repo OutboxRepository, producer *kafka.Producer, logger *zap.Logger, interval time.Duration, limit int, txManager TxManager) *OutboxRelay {
-	return &OutboxRelay{
+	r := &OutboxRelay{
 		repo:      repo,
 		producer:  producer,
 		logger:    logger,
-		interval:  interval,
-		limit:     limit,
 		txManager: txManager,
 	}
+	r.interval.Store(int64(interval))
+	r.limit.Store(int64(limit))
+	return r
 }
 
 func (r *OutboxRelay) Run(ctx context.Context) {
@@ -47,7 +49,7 @@ func (r *OutboxRelay) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(r.interval):
+		case <-time.After(time.Duration(r.interval.Load())):
 			r.relayMessages(ctx)
 		}
 	}
@@ -55,7 +57,7 @@ func (r *OutboxRelay) Run(ctx context.Context) {
 
 func (r *OutboxRelay) relayMessages(ctx context.Context) {
 	// Получаем не опубликованные сообщения из репозитория
-	msgs, err := r.repo.GetOutboxMessagesUnpublished(ctx, r.limit)
+	msgs, err := r.repo.GetOutboxMessagesUnpublished(ctx, int(r.limit.Load()))
 	if err != nil {
 		r.logger.Error("failed to get outbox messages", zap.Error(err))
 		return
@@ -87,4 +89,12 @@ func (r *OutboxRelay) relayMessages(ctx context.Context) {
 
 	}
 
+}
+
+func (r *OutboxRelay) SetLimit(n int) {
+	r.limit.Store(int64(n))
+}
+
+func (r *OutboxRelay) SetInterval(d time.Duration) {
+	r.interval.Store(int64(d))
 }

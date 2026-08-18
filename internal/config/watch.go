@@ -101,6 +101,14 @@ func configChanges(old, new *Config) []zap.Field {
 		add("graceful_shutdown_timeout", old.HttpServer.GracefulShutdownTimeout.String(), new.HttpServer.GracefulShutdownTimeout.String())
 	}
 
+	if old.Outbox.RelayInterval != new.Outbox.RelayInterval {
+		add("relay_interval", old.Outbox.RelayInterval.String(), new.Outbox.RelayInterval.String())
+	}
+
+	if old.Outbox.Limit != new.Outbox.Limit {
+		add("limit", old.Outbox.Limit, new.Outbox.Limit)
+	}
+
 	return fields
 }
 

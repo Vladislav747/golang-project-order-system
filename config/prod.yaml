@@ -1,5 +1,5 @@
 env: "prod" #local, stg, prod
-processing_mode: 
+processing_mode:
   mode: "async" # sync, async
 http_server:
   read_timeout: 10s
@@ -7,3 +7,6 @@ http_server:
   idle_timeout: 60s
   graceful_shutdown_timeout: 10s
   request_timeout: 10s
+outbox:
+  relay_interval: 2s
+  limit: 100

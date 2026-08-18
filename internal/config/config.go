@@ -15,6 +15,7 @@ type Config struct {
 	Port           int            `yaml:"-"` // только из HTTP_PORT env
 	GrpcPort       int            `yaml:"-"` // только из GRPC_PORT env
 	HttpServer     HttpServer     `yaml:"http_server"`
+	Outbox         Outbox         `yaml:"outbox"`
 	ProcessingMode ProcessingMode `yaml:"processing_mode"`
 	Database       DatabaseConfig `yaml:"-"`
 	Kafka          KafkaConfig    `yaml:"-"`
@@ -39,6 +40,11 @@ type HttpServer struct {
 	IdleTimeout             time.Duration `yaml:"idle_timeout"`
 	RequestTimeout          time.Duration `yaml:"request_timeout"`
 	GracefulShutdownTimeout time.Duration `yaml:"graceful_shutdown_timeout"`
+}
+
+type Outbox struct {
+	RelayInterval time.Duration `yaml:"relay_interval"`
+	Limit         int           `yaml:"limit"`
 }
 
 func MustLoad() *Config {

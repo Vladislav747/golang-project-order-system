@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -43,7 +42,7 @@ func main() {
 	svc := mustInitService(pool, producer, logger)
 	consumer, cancel, consumerWG := mustStartConsumer(cfg, svc, logger)
 
-	relayCancel, relayWG := mustStartOutboxRelay(pool, producer, logger)
+	relay, relayCancel, relayWG := mustStartOutboxRelay(cfg, pool, producer, logger)
 
 	provider := config.NewProvider(cfg)
 
@@ -78,6 +77,8 @@ func main() {
 			server.ReadTimeout = newCfg.HttpServer.ReadTimeout
 			server.WriteTimeout = newCfg.HttpServer.WriteTimeout
 			server.IdleTimeout = newCfg.HttpServer.IdleTimeout
+			relay.SetInterval(newCfg.Outbox.RelayInterval)
+			relay.SetLimit(newCfg.Outbox.Limit)
 		}
 		if err := provider.StartWatch(watchCtx, path, logger, onReload); err != nil {
 			logger.Error("config watch stopped", zap.Error(err))
@@ -254,15 +255,15 @@ func mustStartConsumer(cfg *config.Config, svc *service.Service, logger *zap.Log
 	return consumer, cancel, &wg
 }
 
-func mustStartOutboxRelay(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) (context.CancelFunc, *sync.WaitGroup) {
+func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) (*worker.OutboxRelay, context.CancelFunc, *sync.WaitGroup) {
 	repositoryOutbox := repositoryOutbox.NewRepository(pool, logger)
 	relay := worker.NewOutboxRelay(
 		repositoryOutbox,
 		producer,
 		logger,
-		time.Second, // interval
-		100,         // limit
-		pool,        // TxManager
+		cfg.Outbox.RelayInterval,
+		cfg.Outbox.Limit,
+		pool, // TxManager
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -273,5 +274,5 @@ func mustStartOutboxRelay(pool *pgxpool.Pool, producer *kafka.Producer, logger *
 		defer wg.Done()
 		relay.Run(ctx)
 	}()
-	return cancel, &wg
+	return relay, cancel, &wg
 }
