@@ -43,8 +43,11 @@ type HttpServer struct {
 }
 
 type Outbox struct {
-	RelayInterval time.Duration `yaml:"relay_interval"`
-	Limit         int           `yaml:"limit"`
+	RelayInterval      time.Duration `yaml:"relay_interval"`
+	Limit              int           `yaml:"limit"`
+	CleanupInterval    time.Duration `yaml:"cleanup_interval"`
+	PublishedRetention time.Duration `yaml:"published_retention"`
+	MaxAttempts        int           `yaml:"max_attempts"`
 }
 
 func MustLoad() *Config {

@@ -12,16 +12,16 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
-type repository struct {
+type Repository struct {
 	pool   *pgxpool.Pool
 	logger *zap.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *repository {
-	return &repository{pool: pool, logger: logger}
+func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *Repository {
+	return &Repository{pool: pool, logger: logger}
 }
 
-func (r *repository) CreateOrderEvent(ctx context.Context, tx pgx.Tx, order model.OrderEvent) error {
+func (r *Repository) CreateOrderEvent(ctx context.Context, tx pgx.Tx, order model.OrderEvent) error {
 
 	sqlQuery := sqlx.Rebind(sqlx.DOLLAR, `
 		INSERT INTO order_events (id, order_id, event_type, source, payload, created_at)
@@ -36,7 +36,7 @@ func (r *repository) CreateOrderEvent(ctx context.Context, tx pgx.Tx, order mode
 	return nil
 }
 
-func (r *repository) GetOrderEvents(ctx context.Context) ([]model.OrderEvent, error) {
+func (r *Repository) GetOrderEvents(ctx context.Context) ([]model.OrderEvent, error) {
 	sqlQuery := `SELECT * from order_events`
 	rows, err := r.pool.Query(ctx, sqlQuery)
 	if err != nil {

@@ -12,16 +12,16 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
-type repository struct {
+type Repository struct {
 	pool   *pgxpool.Pool
 	logger *zap.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *repository {
-	return &repository{pool: pool, logger: logger}
+func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *Repository {
+	return &Repository{pool: pool, logger: logger}
 }
 
-func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
+func (r *Repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
 
 	sqlQuery := sqlx.Rebind(sqlx.DOLLAR, `
 		INSERT INTO orders (id, customer_id, status, total_amount, currency, items)
@@ -36,7 +36,7 @@ func (r *repository) CreateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
 	return nil
 }
 
-func (r *repository) GetOrders(ctx context.Context) ([]model.Order, error) {
+func (r *Repository) GetOrders(ctx context.Context) ([]model.Order, error) {
 	sqlQuery := `SELECT * from orders`
 	rows, err := r.pool.Query(ctx, sqlQuery)
 	if err != nil {
@@ -53,7 +53,7 @@ func (r *repository) GetOrders(ctx context.Context) ([]model.Order, error) {
 
 }
 
-func (r *repository) GetOrder(ctx context.Context, id string) (model.Order, error) {
+func (r *Repository) GetOrder(ctx context.Context, id string) (model.Order, error) {
 	sqlQuery := `
         SELECT id, customer_id, status, total_amount, currency, items,
                created_at, updated_at, deleted_at
@@ -78,7 +78,7 @@ func (r *repository) GetOrder(ctx context.Context, id string) (model.Order, erro
 	return order, nil
 }
 
-func (r *repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
+func (r *Repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Order) error {
 	sqlQuery := `
         UPDATE orders
 		SET status = $1,
@@ -93,7 +93,7 @@ func (r *repository) UpdateOrder(ctx context.Context, tx pgx.Tx, order model.Ord
 	return nil
 }
 
-func (r *repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) error {
+func (r *Repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) error {
 	sqlQuery := `DELETE FROM orders WHERE id = $1;`
 	_, err := tx.Exec(ctx, sqlQuery, id)
 	if err != nil {
@@ -103,7 +103,7 @@ func (r *repository) DeleteOrder(ctx context.Context, tx pgx.Tx, id string) erro
 	return nil
 }
 
-func (r *repository) DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) error {
+func (r *Repository) DeleteSoftOrder(ctx context.Context, tx pgx.Tx, id string) error {
 	sqlQuery := `
         UPDATE orders
 		SET status = 'deleted',

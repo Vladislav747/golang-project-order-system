@@ -43,6 +43,7 @@ func main() {
 	consumer, cancel, consumerWG := mustStartConsumer(cfg, svc, logger)
 
 	relay, relayCancel, relayWG := mustStartOutboxRelay(cfg, pool, producer, logger)
+	cleaner, cleanerCancel, cleanerWG := mustStartOutboxCleaner(cfg, pool, logger)
 
 	provider := config.NewProvider(cfg)
 
@@ -79,6 +80,9 @@ func main() {
 			server.IdleTimeout = newCfg.HttpServer.IdleTimeout
 			relay.SetInterval(newCfg.Outbox.RelayInterval)
 			relay.SetLimit(newCfg.Outbox.Limit)
+			cleaner.SetInterval(newCfg.Outbox.CleanupInterval)
+			cleaner.SetRetention(newCfg.Outbox.PublishedRetention)
+			cleaner.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
 		}
 		if err := provider.StartWatch(watchCtx, path, logger, onReload); err != nil {
 			logger.Error("config watch stopped", zap.Error(err))
@@ -119,7 +123,9 @@ func main() {
 		provider,
 		watchCancel,
 		relayCancel,
+		cleanerCancel,
 		relayWG,
+		cleanerWG,
 	)
 }
 
@@ -134,7 +140,9 @@ func gracefulShutdown(
 	provider *config.Provider,
 	watchCancel context.CancelFunc,
 	outboxCancel context.CancelFunc,
+	outboxCleanerCancel context.CancelFunc,
 	outboxWG *sync.WaitGroup,
+	outboxCleanerWG *sync.WaitGroup,
 ) {
 	// Ждем сигналы прерывания
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -172,6 +180,11 @@ func gracefulShutdown(
 	outboxCancel()
 	// горутина точно завершилась - relay.Run завершится только после завершения работы relay
 	outboxWG.Wait()
+
+	logger.Info("shutting down outbox cleaner")
+	outboxCleanerCancel()
+	// горутина точно завершилась - cleaner.Run завершится только после завершения работы cleaner
+	outboxCleanerWG.Wait()
 
 	logger.Info("shutting down producer")
 	// Закрываем producer
@@ -275,4 +288,26 @@ func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafk
 		relay.Run(ctx)
 	}()
 	return relay, cancel, &wg
+}
+
+func mustStartOutboxCleaner(cfg *config.Config, pool *pgxpool.Pool, logger *zap.Logger) (*worker.OutboxCleaner, context.CancelFunc, *sync.WaitGroup) {
+	repo := repositoryOutbox.NewRepository(pool, logger)
+	cleaner := worker.NewOutboxCleaner(
+		repo,
+		logger,
+		cfg.Outbox.CleanupInterval,
+		cfg.Outbox.PublishedRetention,
+		cfg.Outbox.MaxAttempts,
+		pool,
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		cleaner.Run(ctx)
+	}()
+	return cleaner, cancel, &wg
 }

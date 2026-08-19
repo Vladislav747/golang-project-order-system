@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -12,16 +13,16 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
-type repository struct {
+type Repository struct {
 	pool   *pgxpool.Pool
 	logger *zap.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *repository {
-	return &repository{pool: pool, logger: logger}
+func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *Repository {
+	return &Repository{pool: pool, logger: logger}
 }
 
-func (r *repository) CreateOutboxMessage(ctx context.Context, tx pgx.Tx, message model.OutboxMessage) error {
+func (r *Repository) CreateOutboxMessage(ctx context.Context, tx pgx.Tx, message model.OutboxMessage) error {
 
 	sqlQuery := sqlx.Rebind(sqlx.DOLLAR, `
 		INSERT INTO outbox (id, aggregate_type, aggregate_id, event_type, topic, payload)
@@ -36,7 +37,7 @@ func (r *repository) CreateOutboxMessage(ctx context.Context, tx pgx.Tx, message
 	return nil
 }
 
-func (r *repository) GetOutboxMessagesUnpublished(ctx context.Context, limit int) ([]model.OutboxMessage, error) {
+func (r *Repository) GetOutboxMessagesUnpublished(ctx context.Context, limit int) ([]model.OutboxMessage, error) {
 
 	sqlQuery := `
         SELECT *
@@ -59,7 +60,7 @@ func (r *repository) GetOutboxMessagesUnpublished(ctx context.Context, limit int
 	return outboxMessages, nil
 }
 
-func (r *repository) MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
+func (r *Repository) MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 
 	sqlQuery := `
         UPDATE outbox
@@ -76,7 +77,7 @@ func (r *repository) MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, 
 	return nil
 }
 
-func (r *repository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error {
+func (r *Repository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error {
 
 	sqlQuery := `
         UPDATE outbox
@@ -89,6 +90,25 @@ func (r *repository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id 
 	if err != nil {
 		r.logger.Error("failed to update outbox message failed in repository", zap.Error(err))
 		return err
+	}
+	return nil
+}
+
+func (r *Repository) CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retention time.Duration, maxAttempts int) error {
+
+	sqlQuery := `
+        DELETE FROM outbox
+		WHERE (published_at IS NOT NULL AND published_at < NOW() - $1::interval)
+   			OR (published_at IS NULL AND attempts >= $2)
+    `
+
+	tag, err := tx.Exec(ctx, sqlQuery, retention, maxAttempts)
+	if err != nil {
+		r.logger.Error("failed to clean published messages in repository", zap.Error(err))
+		return err
+	}
+	if tag.RowsAffected() > 0 {
+		r.logger.Info("outbox messages cleaned", zap.Int64("deleted", tag.RowsAffected()))
 	}
 	return nil
 }

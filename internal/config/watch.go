@@ -109,6 +109,18 @@ func configChanges(old, new *Config) []zap.Field {
 		add("limit", old.Outbox.Limit, new.Outbox.Limit)
 	}
 
+	if old.Outbox.CleanupInterval != new.Outbox.CleanupInterval {
+		add("cleanup_interval", old.Outbox.CleanupInterval.String(), new.Outbox.CleanupInterval.String())
+	}
+
+	if old.Outbox.PublishedRetention != new.Outbox.PublishedRetention {
+		add("published_retention", old.Outbox.PublishedRetention.String(), new.Outbox.PublishedRetention.String())
+	}
+
+	if old.Outbox.MaxAttempts != new.Outbox.MaxAttempts {
+		add("max_attempts", old.Outbox.MaxAttempts, new.Outbox.MaxAttempts)
+	}
+
 	return fields
 }
 
