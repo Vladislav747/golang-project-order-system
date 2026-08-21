@@ -2,6 +2,8 @@ package kafka
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/IBM/sarama"
 	"go.uber.org/zap"
@@ -11,6 +13,23 @@ type Producer struct {
 	producer sarama.SyncProducer
 	topic    string
 	logger   *zap.Logger
+}
+
+type PublishMessage struct {
+	Topic    string
+	Payload  []byte
+	Metadata any // uuid.UUID из outbox
+}
+
+type PublishError struct {
+	Metadata any
+	Err      error
+}
+
+type PublishErrors []PublishError
+
+func (e PublishErrors) Error() string {
+	return fmt.Sprintf("%d publish errors", len(e))
 }
 
 func NewProducer(brokers []string, topic string, logger *zap.Logger) (*Producer, error) {
@@ -67,4 +86,44 @@ func (p *Producer) PublishEvent(topic string, value []byte) error {
 
 func (p *Producer) Close() error {
 	return p.producer.Close()
+}
+
+func (p *Producer) PublishEvents(events []PublishMessage) error {
+
+	if len(events) == 0 {
+		return nil
+	}
+
+	msgs := make([]*sarama.ProducerMessage, 0, len(events))
+
+	for _, event := range events {
+		msgs = append(msgs, &sarama.ProducerMessage{
+			Topic:    event.Topic,
+			Value:    sarama.ByteEncoder(event.Payload),
+			Metadata: event.Metadata, // важно!
+		})
+	}
+
+	err := p.producer.SendMessages(msgs)
+
+	if err != nil {
+		p.logger.Error("failed to publish outbox events", zap.Error(err))
+		var producerErrs sarama.ProducerErrors
+		if errors.As(err, &producerErrs) {
+			out := make(PublishErrors, 0, len(producerErrs))
+			for _, pe := range producerErrs {
+				if pe == nil || pe.Msg == nil {
+					continue
+				}
+				out = append(out, PublishError{
+					Metadata: pe.Msg.Metadata,
+					Err:      pe.Err,
+				})
+			}
+			return out
+		}
+		return err
+	}
+
+	return nil
 }

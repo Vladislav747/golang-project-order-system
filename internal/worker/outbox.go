@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -62,31 +63,61 @@ func (r *OutboxRelay) relayMessages(ctx context.Context) {
 		r.logger.Error("failed to get outbox messages", zap.Error(err))
 		return
 	}
-	// Перебираем все сообщения и публикуем их в Kafka
+	if len(msgs) == 0 {
+		return
+	}
+
+	// собираем батч сообщений для публикации
+
+	events := make([]kafka.PublishMessage, 0, len(msgs))
+
 	for _, msg := range msgs {
-		publishErr := r.producer.PublishEvent(string(msg.Topic), msg.Payload)
-		if publishErr != nil {
-			r.logger.Error("relayMessages. failed to publish outbox event", zap.Error(publishErr))
-			err = pgx.BeginFunc(ctx, r.txManager, func(tx pgx.Tx) error {
-				return r.repo.MarkOutboxMessageFailed(ctx, tx, msg.ID, publishErr.Error())
-			})
-			if err != nil {
-				r.logger.Error("relayMessages. failed to mark outbox message failed", zap.Error(err))
+		events = append(events, kafka.PublishMessage{
+			Topic:    string(msg.Topic),
+			Payload:  msg.Payload,
+			Metadata: msg.ID,
+		})
+	}
+
+	err = r.producer.PublishEvents(events)
+
+	failed := make(map[uuid.UUID]error)
+	if err != nil {
+		var batchErr kafka.PublishErrors
+		if errors.As(err, &batchErr) {
+			// pe - 'publish error'
+			for _, pe := range batchErr {
+				id, ok := pe.Metadata.(uuid.UUID)
+				if !ok {
+					continue
+				}
+				failed[id] = pe.Err
+			}
+		} else {
+			// упал весь батч
+			for _, msg := range msgs {
+				failed[msg.ID] = err
+			}
+		}
+	}
+
+	// 4) один BeginFunc — mark всех
+	err = pgx.BeginFunc(ctx, r.txManager, func(tx pgx.Tx) error {
+		for _, msg := range msgs {
+			if pubErr, ok := failed[msg.ID]; ok {
+				if markErr := r.repo.MarkOutboxMessageFailed(ctx, tx, msg.ID, pubErr.Error()); markErr != nil {
+					return markErr
+				}
 				continue
 			}
-			continue
+			if markErr := r.repo.MarkOutboxMessagePublished(ctx, tx, msg.ID); markErr != nil {
+				return markErr
+			}
 		}
-
-		// Отмечаем сообщение как опубликованное в базе данных
-		err = pgx.BeginFunc(ctx, r.txManager, func(tx pgx.Tx) error {
-			return r.repo.MarkOutboxMessagePublished(ctx, tx, msg.ID)
-		})
-
-		if err != nil {
-			r.logger.Error("relayMessages. failed to mark outbox message published", zap.Error(err))
-			continue
-		}
-
+		return nil
+	})
+	if err != nil {
+		r.logger.Error("relayMessages. failed to mark outbox messages", zap.Error(err))
 	}
 
 }
