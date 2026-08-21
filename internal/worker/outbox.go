@@ -15,12 +15,13 @@ import (
 )
 
 type OutboxRelay struct {
-	repo      OutboxRepository
-	producer  *kafka.Producer
-	logger    *zap.Logger
-	interval  atomic.Int64
-	limit     atomic.Int64
-	txManager TxManager
+	repo        OutboxRepository
+	producer    *kafka.Producer
+	logger      *zap.Logger
+	interval    atomic.Int64
+	limit       atomic.Int64
+	maxAttempts atomic.Int64
+	txManager   TxManager
 }
 
 type TxManager interface {
@@ -28,12 +29,19 @@ type TxManager interface {
 }
 
 type OutboxRepository interface {
-	GetOutboxMessagesUnpublished(ctx context.Context, limit int) ([]model.OutboxMessage, error)
+	GetOutboxMessagesUnpublished(ctx context.Context, limit int, maxAttempts int) ([]model.OutboxMessage, error)
 	MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error
 }
 
-func NewOutboxRelay(repo OutboxRepository, producer *kafka.Producer, logger *zap.Logger, interval time.Duration, limit int, txManager TxManager) *OutboxRelay {
+func NewOutboxRelay(
+	repo OutboxRepository,
+	producer *kafka.Producer,
+	logger *zap.Logger,
+	interval time.Duration,
+	limit int,
+	maxAttempts int,
+	txManager TxManager) *OutboxRelay {
 	r := &OutboxRelay{
 		repo:      repo,
 		producer:  producer,
@@ -42,6 +50,7 @@ func NewOutboxRelay(repo OutboxRepository, producer *kafka.Producer, logger *zap
 	}
 	r.interval.Store(int64(interval))
 	r.limit.Store(int64(limit))
+	r.maxAttempts.Store(int64(maxAttempts))
 	return r
 }
 
@@ -58,7 +67,7 @@ func (r *OutboxRelay) Run(ctx context.Context) {
 
 func (r *OutboxRelay) relayMessages(ctx context.Context) {
 	// Получаем не опубликованные сообщения из репозитория
-	msgs, err := r.repo.GetOutboxMessagesUnpublished(ctx, int(r.limit.Load()))
+	msgs, err := r.repo.GetOutboxMessagesUnpublished(ctx, int(r.limit.Load()), int(r.maxAttempts.Load()))
 	if err != nil {
 		r.logger.Error("failed to get outbox messages", zap.Error(err))
 		return
@@ -128,4 +137,8 @@ func (r *OutboxRelay) SetLimit(n int) {
 
 func (r *OutboxRelay) SetInterval(d time.Duration) {
 	r.interval.Store(int64(d))
+}
+
+func (r *OutboxRelay) SetMaxAttempts(n int) {
+	r.maxAttempts.Store(int64(n))
 }

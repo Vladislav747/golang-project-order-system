@@ -80,6 +80,7 @@ func main() {
 			server.IdleTimeout = newCfg.HttpServer.IdleTimeout
 			relay.SetInterval(newCfg.Outbox.RelayInterval)
 			relay.SetLimit(newCfg.Outbox.Limit)
+			relay.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
 			cleaner.SetInterval(newCfg.Outbox.CleanupInterval)
 			cleaner.SetRetention(newCfg.Outbox.PublishedRetention)
 			cleaner.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
@@ -276,6 +277,7 @@ func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafk
 		logger,
 		cfg.Outbox.RelayInterval,
 		cfg.Outbox.Limit,
+		cfg.Outbox.MaxAttempts,
 		pool, // TxManager
 	)
 

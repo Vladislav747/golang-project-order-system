@@ -26,9 +26,9 @@ func (_m *MockOutboxRepository) EXPECT() *MockOutboxRepository_Expecter {
 	return &MockOutboxRepository_Expecter{mock: &_m.Mock}
 }
 
-// GetOutboxMessagesUnpublished provides a mock function with given fields: ctx, limit
-func (_m *MockOutboxRepository) GetOutboxMessagesUnpublished(ctx context.Context, limit int) ([]model.OutboxMessage, error) {
-	ret := _m.Called(ctx, limit)
+// GetOutboxMessagesUnpublished provides a mock function with given fields: ctx, limit, maxAttempts
+func (_m *MockOutboxRepository) GetOutboxMessagesUnpublished(ctx context.Context, limit int, maxAttempts int) ([]model.OutboxMessage, error) {
+	ret := _m.Called(ctx, limit, maxAttempts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOutboxMessagesUnpublished")
@@ -36,19 +36,19 @@ func (_m *MockOutboxRepository) GetOutboxMessagesUnpublished(ctx context.Context
 
 	var r0 []model.OutboxMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) ([]model.OutboxMessage, error)); ok {
-		return rf(ctx, limit)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]model.OutboxMessage, error)); ok {
+		return rf(ctx, limit, maxAttempts)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) []model.OutboxMessage); ok {
-		r0 = rf(ctx, limit)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) []model.OutboxMessage); ok {
+		r0 = rf(ctx, limit, maxAttempts)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]model.OutboxMessage)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
-		r1 = rf(ctx, limit)
+	if rf, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = rf(ctx, limit, maxAttempts)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -64,13 +64,14 @@ type MockOutboxRepository_GetOutboxMessagesUnpublished_Call struct {
 // GetOutboxMessagesUnpublished is a helper method to define mock.On call
 //   - ctx context.Context
 //   - limit int
-func (_e *MockOutboxRepository_Expecter) GetOutboxMessagesUnpublished(ctx interface{}, limit interface{}) *MockOutboxRepository_GetOutboxMessagesUnpublished_Call {
-	return &MockOutboxRepository_GetOutboxMessagesUnpublished_Call{Call: _e.mock.On("GetOutboxMessagesUnpublished", ctx, limit)}
+//   - maxAttempts int
+func (_e *MockOutboxRepository_Expecter) GetOutboxMessagesUnpublished(ctx interface{}, limit interface{}, maxAttempts interface{}) *MockOutboxRepository_GetOutboxMessagesUnpublished_Call {
+	return &MockOutboxRepository_GetOutboxMessagesUnpublished_Call{Call: _e.mock.On("GetOutboxMessagesUnpublished", ctx, limit, maxAttempts)}
 }
 
-func (_c *MockOutboxRepository_GetOutboxMessagesUnpublished_Call) Run(run func(ctx context.Context, limit int)) *MockOutboxRepository_GetOutboxMessagesUnpublished_Call {
+func (_c *MockOutboxRepository_GetOutboxMessagesUnpublished_Call) Run(run func(ctx context.Context, limit int, maxAttempts int)) *MockOutboxRepository_GetOutboxMessagesUnpublished_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int))
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
 	})
 	return _c
 }
@@ -80,7 +81,7 @@ func (_c *MockOutboxRepository_GetOutboxMessagesUnpublished_Call) Return(_a0 []m
 	return _c
 }
 
-func (_c *MockOutboxRepository_GetOutboxMessagesUnpublished_Call) RunAndReturn(run func(context.Context, int) ([]model.OutboxMessage, error)) *MockOutboxRepository_GetOutboxMessagesUnpublished_Call {
+func (_c *MockOutboxRepository_GetOutboxMessagesUnpublished_Call) RunAndReturn(run func(context.Context, int, int) ([]model.OutboxMessage, error)) *MockOutboxRepository_GetOutboxMessagesUnpublished_Call {
 	_c.Call.Return(run)
 	return _c
 }
