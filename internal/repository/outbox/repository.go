@@ -37,17 +37,18 @@ func (r *Repository) CreateOutboxMessage(ctx context.Context, tx pgx.Tx, message
 	return nil
 }
 
-func (r *Repository) GetOutboxMessagesUnpublished(ctx context.Context, limit int) ([]model.OutboxMessage, error) {
+func (r *Repository) GetOutboxMessagesUnpublished(ctx context.Context, limit int, maxAttempts int) ([]model.OutboxMessage, error) {
 
 	sqlQuery := `
         SELECT *
         FROM outbox
         WHERE published_at is null
+		AND attempts < $2
 		ORDER BY created_at ASC
 		LIMIT $1
     `
 
-	rows, err := r.pool.Query(ctx, sqlQuery, limit)
+	rows, err := r.pool.Query(ctx, sqlQuery, limit, maxAttempts)
 	if err != nil {
 		r.logger.Error("failed to get unpublished outbox messages in repository", zap.Error(err))
 		return nil, err
