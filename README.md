@@ -10,7 +10,61 @@ domain — сущности (Order, OrderEvent) и интерфейсы, без 
 repository/postgres — только SQL, методы принимают tx снаружи(открывает и закрывает транзакцию снаружи).
 service — бизнес-логика и управление транзакцией (BEGIN/COMMIT/ROLLBACK здесь, не в repo).
 transport/http + transport/kafka — хендлеры, DTO, продьюсер, консьюмер. DTO ≠ domain.
-Плюс config, logger, cmd/order-service/main.go, migrations/, docker-compose.yml.
+Плюс config, logger, `cmd/order-service`, `cmd/outbox-worker`, migrations/, docker-compose.yml.
+
+## Архитектура: два процесса
+
+В async-режиме outbox вынесен в отдельный worker. **Нельзя** запускать relay/cleaner и в `order-service`, и в `outbox-worker` одновременно — будет двойная обработка одной таблицы.
+
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│   order-service     │         │   outbox-worker     │
+│                     │         │                     │
+│  HTTP / gRPC        │         │  outbox relay       │
+│  Kafka consumer     │         │  outbox cleaner     │
+└─────────┬───────────┘         └─────────┬───────────┘
+          │                               │
+          │  write (async)                │  read + publish
+          ▼                               ▼
+    ┌───────────┐                   ┌───────────┐
+    │ PostgreSQL│◄──────────────────│  outbox   │
+    │  orders   │                   │  table    │
+    └───────────┘                   └─────┬─────┘
+                                          │
+                                          ▼
+                                    ┌───────────┐
+                                    │   Kafka   │
+                                    └───────────┘
+```
+
+| Процесс | Роль |
+|---------|------|
+| `order-service` | API, Kafka consumer, запись в outbox при async-командах |
+| `outbox-worker` | Читает outbox → публикует в Kafka, чистит старые строки |
+
+В Docker оба сервиса поднимаются из одного образа: `go-app` и `outbox-worker` в `docker-compose.yml`.
+
+### Локальный запуск
+
+Два терминала:
+
+```bash
+make local-run          # order-service (HTTP, gRPC, consumer)
+make local-run-outbox   # relay + cleaner
+```
+
+Или напрямую:
+
+```go
+go run ./cmd/order-service
+go run ./cmd/outbox-worker
+```
+
+Сборка обоих бинарников:
+
+```bash
+make build
+```
 
 Сущности:
 
@@ -30,14 +84,15 @@ CRUD: GET /orders/{id} (лог viewed), GET /orders (пагинация + фил
 Offset коммитится после успешной обработки.
 context сквозь всю цепочку, graceful shutdown, pgxpool, миграции (goose/migrate).
 
-Инфра: docker-compose up поднимает Postgres + Kafka + сервис. Конфиг через env/yaml. Минимум тестов: unit на сервис + 1 integration через testcontainers.
-Бонус: transactional outbox, DLQ, метрики.
+Инфра: `docker compose up` поднимает Postgres + Kafka + `go-app` + `outbox-worker`. Конфиг через env/yaml. Минимум тестов: unit на сервис + 1 integration через testcontainers.
+Бонус: transactional outbox (relay/cleaner в `outbox-worker`), DLQ, метрики.
 
 
 
 ```go
-go run ./cmd/order-service/main.go
-go build ./cmd/order-service/main.go
+go run ./cmd/order-service
+go run ./cmd/outbox-worker
+make build   # bin/order-service + bin/outbox-worker
 ```
 
 Что по следующим шагам

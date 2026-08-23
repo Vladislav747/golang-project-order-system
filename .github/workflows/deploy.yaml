@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - 'release/**'
+      - "release/**"
   workflow_dispatch:
 
 concurrency:
@@ -42,8 +42,10 @@ jobs:
         run: go mod download
       - name: Vet
         run: go vet ./...
-      - name: Build
+      - name: Build Order service
         run: go build -v ./cmd/order-service
+      - name: Build Outbox worker
+        run: go build -v ./cmd/outbox-worker
 
   unittest:
     name: Unit tests
