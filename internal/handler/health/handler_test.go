@@ -1,27 +1,24 @@
 package health_test
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/handler/health"
+	"github.com/Vladislav747/golang-project-order-system/internal/handler/health/mocks"
 )
-
-type stubChecker struct {
-	err error
-}
-
-func (s stubChecker) Ready(context.Context) error { return s.err }
 
 func TestLive_AlwaysOK(t *testing.T) {
 	t.Parallel()
-	h := health.NewHandler(stubChecker{})
+	checker := mocks.NewMockChecker(t)
+
+	h := health.NewHandler(checker)
 	rr := httptest.NewRecorder()
 	h.Live(rr, httptest.NewRequest(http.MethodGet, "/livez", nil))
 	require.Equal(t, http.StatusOK, rr.Code)
@@ -29,7 +26,10 @@ func TestLive_AlwaysOK(t *testing.T) {
 
 func TestReady_OK(t *testing.T) {
 	t.Parallel()
-	h := health.NewHandler(stubChecker{})
+	checker := mocks.NewMockChecker(t)
+	checker.EXPECT().Ready(mock.Anything).Return(nil)
+
+	h := health.NewHandler(checker)
 	rr := httptest.NewRecorder()
 	h.Ready(rr, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	require.Equal(t, http.StatusOK, rr.Code)
@@ -41,7 +41,10 @@ func TestReady_OK(t *testing.T) {
 
 func TestReady_NotReady(t *testing.T) {
 	t.Parallel()
-	h := health.NewHandler(stubChecker{err: errors.New("db down")})
+	checker := mocks.NewMockChecker(t)
+	checker.EXPECT().Ready(mock.Anything).Return(errors.New("db down"))
+
+	h := health.NewHandler(checker)
 	rr := httptest.NewRecorder()
 	h.Ready(rr, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	require.Equal(t, http.StatusServiceUnavailable, rr.Code)

@@ -124,6 +124,7 @@ jobs:
         run: |
           go mod download
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o order-service ./cmd/order-service
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o outbox-worker ./cmd/outbox-worker
           chmod +x order-service
           file order-service
 

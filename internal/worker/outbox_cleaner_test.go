@@ -3,6 +3,7 @@
 package worker
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -35,6 +36,23 @@ func TestOutboxCleaner_Clean_OK(t *testing.T) {
 		3,            // maxAttempts — тоже
 		txManager,
 	)
+	cleaner.clean(ctx)
+}
+
+func TestOutboxCleaner_Clean_Error(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	repoOutbox, txManager, mockTx := createMocks(t)
+
+	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
+	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
+	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
+
+	repoOutbox.EXPECT().
+		CleanOutboxMessages(mock.Anything, mockTx, 24*time.Hour, 3).
+		Return(errors.New("error"))
+
 	cleaner.clean(ctx)
 }
 
