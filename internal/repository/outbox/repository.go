@@ -6,19 +6,22 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
+type Pool interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
 type Repository struct {
-	pool   *pgxpool.Pool
+	pool   Pool
 	logger *zap.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *Repository {
+func NewRepository(pool Pool, logger *zap.Logger) *Repository {
 	return &Repository{pool: pool, logger: logger}
 }
 

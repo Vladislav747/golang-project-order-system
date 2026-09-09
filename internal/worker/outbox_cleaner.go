@@ -37,12 +37,16 @@ func NewOutboxCleaner(
 }
 
 func (c *OutboxCleaner) Run(ctx context.Context) {
+	timer := time.NewTimer(time.Duration(c.interval.Load()))
+	defer timer.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Duration(c.interval.Load())):
+		case <-timer.C:
 			c.clean(ctx)
+			timer.Reset(time.Duration(c.interval.Load()))
 		}
 	}
 }

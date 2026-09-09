@@ -55,12 +55,16 @@ func NewOutboxRelay(
 }
 
 func (r *OutboxRelay) Run(ctx context.Context) {
+	timer := time.NewTimer(time.Duration(r.interval.Load()))
+	defer timer.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Duration(r.interval.Load())):
+		case <-timer.C:
 			r.relayMessages(ctx)
+			timer.Reset(time.Duration(r.interval.Load()))
 		}
 	}
 }
