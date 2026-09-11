@@ -26,10 +26,14 @@ prod-down:
 	docker compose -f docker-compose.prod.yml down
 
 build:
-	go build ./cmd/order-service/main.go
+	go build -o bin/order-service ./cmd/order-service
+	go build -o bin/outbox-worker ./cmd/outbox-worker
 
 local-run:
 	go run ./cmd/order-service/main.go
+
+local-run-outbox:
+	go run ./cmd/outbox-worker/main.go
 
 rebuild-go-app-docker:
 	docker compose up --build go-app

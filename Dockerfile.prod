@@ -5,6 +5,7 @@ RUN apk add --no-cache ca-certificates wget
 WORKDIR /app
 
 COPY order-service ./order-service
+COPY outbox-worker ./outbox-worker
 COPY config/prod.yaml ./config/prod.yaml
 
 EXPOSE 8080 8081

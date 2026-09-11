@@ -6,26 +6,27 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
 )
 
-type repository struct {
+type Repository struct {
 	pool   *pgxpool.Pool
 	logger *zap.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *repository {
-	return &repository{pool: pool, logger: logger}
+func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *Repository {
+	return &Repository{pool: pool, logger: logger}
 }
 
-func (r *repository) CreateOrderEvent(ctx context.Context, tx pgx.Tx, order model.OrderEvent) error {
+func (r *Repository) CreateOrderEvent(ctx context.Context, tx pgx.Tx, order model.OrderEvent) error {
 
-	sqlQuery := `
+	sqlQuery := sqlx.Rebind(sqlx.DOLLAR, `
 		INSERT INTO order_events (id, order_id, event_type, source, payload, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`
+		VALUES (?, ?, ?, ?, ?, ?)
+	`)
 
 	_, err := tx.Exec(ctx, sqlQuery, order.ID, order.OrderID, order.EventType, order.Source, order.Payload, time.Now())
 	if err != nil {
@@ -35,7 +36,7 @@ func (r *repository) CreateOrderEvent(ctx context.Context, tx pgx.Tx, order mode
 	return nil
 }
 
-func (r *repository) GetOrderEvents(ctx context.Context) ([]model.OrderEvent, error) {
+func (r *Repository) GetOrderEvents(ctx context.Context) ([]model.OrderEvent, error) {
 	sqlQuery := `SELECT * from order_events`
 	rows, err := r.pool.Query(ctx, sqlQuery)
 	if err != nil {

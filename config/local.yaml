@@ -1,5 +1,5 @@
 env: "local" #local, stg, prod
-processing_mode: 
+processing_mode:
   mode: "sync" # sync, async
 http_server:
   read_timeout: 10s
@@ -7,3 +7,12 @@ http_server:
   idle_timeout: 60s
   graceful_shutdown_timeout: 10s
   request_timeout: 10s
+outbox:
+  relay_interval: 2s
+  limit: 200
+  # через сколько будет выполняться очистка очереди от не опубликованных сообщений
+  cleanup_interval: 1h
+  # через сколько будет удаляться опубликованное сообщение
+  published_retention: 24h
+  # максимальное количество попыток опубликования сообщения
+  max_attempts: 3

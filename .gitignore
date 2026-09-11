@@ -1,5 +1,7 @@
 .env
 /order-service
+/outbox-worker
 .idea
 .config/.DS_Store
 .DS_Store
+/docs

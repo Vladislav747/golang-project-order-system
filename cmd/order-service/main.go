@@ -13,27 +13,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
+	bootstrap "github.com/Vladislav747/golang-project-order-system/internal/bootstrap"
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler/health"
 	orderHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
 	orderEventHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order_event"
-	"github.com/Vladislav747/golang-project-order-system/internal/pkg/logger"
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
+	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	grpcserver "github.com/Vladislav747/golang-project-order-system/internal/transport/grpcserver"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
 
 func main() {
-	cfg, logger := mustInitConfigAndLogger()
+	cfg, logger := bootstrap.MustInitConfigAndLogger("order-service")
 
-	pool := mustInitPool(cfg, logger)
+	pool := bootstrap.MustInitPool(cfg, logger)
 
 	defer pool.Close()
 
-	producer, err := mustInitProducer(cfg, logger)
+	producer, err := bootstrap.MustInitProducer(cfg, logger)
 	if err != nil {
 		log.Panicf("failed to create producer %v", zap.Error(err))
 	}
@@ -102,7 +103,17 @@ func main() {
 	}()
 
 	// Запускаем graceful shutdown
-	gracefulShutdown(server, grpcSrv, logger, consumer, cancel, consumerWG, producer, provider, watchCancel)
+	gracefulShutdown(
+		server,
+		grpcSrv,
+		logger,
+		consumer,
+		cancel,
+		consumerWG,
+		producer,
+		provider,
+		watchCancel,
+	)
 }
 
 func gracefulShutdown(
@@ -160,46 +171,11 @@ func gracefulShutdown(
 	logger.Info("server stopped")
 }
 
-func mustInitConfigAndLogger() (*config.Config, *zap.Logger) {
-	cfg := config.MustLoad()
-
-	logger := logger.MustNew(cfg.Env)
-
-	logger.Info("starting app",
-		zap.String("env", cfg.Env),
-		zap.Int("port", cfg.Port),
-		zap.Int("grpcPort", cfg.GrpcPort),
-	)
-
-	return cfg, logger
-}
-
-func mustInitPool(cfg *config.Config, logger *zap.Logger) *pgxpool.Pool {
-	pool, err := pgxpool.New(context.Background(), cfg.Database.URL)
-	if err != nil {
-		log.Panicf("failed to create pool: %v", err)
-	}
-
-	if err := pool.Ping(context.Background()); err != nil {
-		log.Panicf("failed to ping pool: %v", err)
-	}
-
-	return pool
-}
-
-func mustInitProducer(cfg *config.Config, logger *zap.Logger) (*kafka.Producer, error) {
-	producer, err := kafka.NewProducer(
-		cfg.Kafka.Brokers,
-		cfg.Kafka.TopicOrders,
-		logger,
-	)
-	return producer, err
-}
-
 func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) *service.Service {
 	repositoryOrder := repositoryOrder.NewRepository(pool, logger)
 	repositoryOrderEvent := repositoryOrderEvent.NewRepository(pool, logger)
-	return service.NewService(repositoryOrder, repositoryOrderEvent, pool, producer, logger)
+	repositoryOutbox := repositoryOutbox.NewRepository(pool, logger)
+	return service.NewService(repositoryOrder, repositoryOrderEvent, repositoryOutbox, pool, producer, logger)
 }
 
 func mustStartConsumer(cfg *config.Config, svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {
