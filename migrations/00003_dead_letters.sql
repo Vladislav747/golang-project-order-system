@@ -49,9 +49,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_dead_letters_kafka_origin
       AND original_partition IS NOT NULL
       AND original_offset IS NOT NULL;
 
+-- NULL = relay может взять строку сейчас. Время следующей попытки пишет код.
+ALTER TABLE outbox
+    ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ;
+
 
 -- +goose Down
 DROP INDEX IF EXISTS idx_dead_letters_pending;
 DROP INDEX IF EXISTS idx_dead_letters_outbox_origin;
 DROP INDEX IF EXISTS idx_dead_letters_kafka_origin;
 DROP TABLE IF EXISTS dead_letters;
+
+ALTER TABLE outbox DROP COLUMN IF EXISTS next_retry_at;
