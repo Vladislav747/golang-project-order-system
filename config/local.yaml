@@ -16,3 +16,13 @@ outbox:
   published_retention: 24h
   # максимальное количество попыток опубликования сообщения
   max_attempts: 3
+  # задержка перед повторной публикацией: 1s → 2s → 4s …
+  backoff_initial: 1s
+  # потолок задержки
+  backoff_max: 8s
+dlq:
+  topic: orders.dlq
+  # сколько раз consumer повторяет обработку одного сообщения до DLQ
+  consumer_max_retries: 3
+  # пауза между повторами
+  consumer_retry_backoff: 200ms
