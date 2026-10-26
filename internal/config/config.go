@@ -19,6 +19,7 @@ type Config struct {
 	ProcessingMode ProcessingMode `yaml:"processing_mode"`
 	Database       DatabaseConfig `yaml:"-"`
 	Kafka          KafkaConfig    `yaml:"-"`
+	DLQ            Dlq            `yaml:"dlq"`
 }
 
 type ProcessingMode struct {
@@ -48,6 +49,14 @@ type Outbox struct {
 	CleanupInterval    time.Duration `yaml:"cleanup_interval"`
 	PublishedRetention time.Duration `yaml:"published_retention"`
 	MaxAttempts        int           `yaml:"max_attempts"`
+	BackoffInitial     time.Duration `yaml:"backoff_initial"`
+	BackoffMax         time.Duration `yaml:"backoff_max"`
+}
+
+type Dlq struct {
+	Topic                string        `yaml:"topic"`
+	ConsumerMaxRetries   int           `yaml:"consumer_max_retries"`
+	ConsumerRetryBackoff time.Duration `yaml:"consumer_retry_backoff"`
 }
 
 func MustLoad() *Config {

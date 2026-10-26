@@ -10,7 +10,7 @@ http_server:
 outbox:
   relay_interval: 2s
   limit: 100
-  # через сколько будет выполняться очистка очереди от не опубликованных сообщений
+  # как часто cleaner удаляет опубликованные сообщения старше published_retention
   cleanup_interval: 1h
   # через сколько будет удаляться опубликованное сообщение
   published_retention: 24h
@@ -20,3 +20,9 @@ outbox:
   backoff_initial: 1s
   # потолок задержки
   backoff_max: 8s
+dlq:
+  topic: orders.dlq
+  # сколько раз consumer повторяет обработку одного сообщения до DLQ
+  consumer_max_retries: 3
+  # пауза между повторами
+  consumer_retry_backoff: 200ms

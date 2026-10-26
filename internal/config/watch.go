@@ -121,6 +121,26 @@ func configChanges(old, new *Config) []zap.Field {
 		add("max_attempts", old.Outbox.MaxAttempts, new.Outbox.MaxAttempts)
 	}
 
+	if old.Outbox.BackoffInitial != new.Outbox.BackoffInitial {
+		add("backoff_initial", old.Outbox.BackoffInitial.String(), new.Outbox.BackoffInitial.String())
+	}
+
+	if old.Outbox.BackoffMax != new.Outbox.BackoffMax {
+		add("backoff_max", old.Outbox.BackoffMax.String(), new.Outbox.BackoffMax.String())
+	}
+
+	if old.DLQ.Topic != new.DLQ.Topic {
+		add("topic", old.DLQ.Topic, new.DLQ.Topic)
+	}
+
+	if old.DLQ.ConsumerMaxRetries != new.DLQ.ConsumerMaxRetries {
+		add("consumer_max_retries", old.DLQ.ConsumerMaxRetries, new.DLQ.ConsumerMaxRetries)
+	}
+
+	if old.DLQ.ConsumerRetryBackoff != new.DLQ.ConsumerRetryBackoff {
+		add("consumer_retry_backoff", old.DLQ.ConsumerRetryBackoff.String(), new.DLQ.ConsumerRetryBackoff.String())
+	}
+
 	return fields
 }
 
