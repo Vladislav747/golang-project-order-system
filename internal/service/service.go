@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -29,7 +30,7 @@ type RepositoryOutbox interface {
 	CreateOutboxMessage(ctx context.Context, tx pgx.Tx, message model.OutboxMessage) error
 	GetOutboxMessagesUnpublished(ctx context.Context, limit int, maxAttempts int) ([]model.OutboxMessage, error)
 	MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
-	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error
+	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time) error
 }
 
 type TxManager interface {

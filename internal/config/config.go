@@ -19,7 +19,7 @@ type Config struct {
 	ProcessingMode ProcessingMode `yaml:"processing_mode"`
 	Database       DatabaseConfig `yaml:"-"`
 	Kafka          KafkaConfig    `yaml:"-"`
-	DLQ            Dlq            `yaml:"dlq"`
+	DLQ            DLQ            `yaml:"dlq"`
 }
 
 type ProcessingMode struct {
@@ -53,7 +53,7 @@ type Outbox struct {
 	BackoffMax         time.Duration `yaml:"backoff_max"`
 }
 
-type Dlq struct {
+type DLQ struct {
 	Topic                string        `yaml:"topic"`
 	ConsumerMaxRetries   int           `yaml:"consumer_max_retries"`
 	ConsumerRetryBackoff time.Duration `yaml:"consumer_retry_backoff"`

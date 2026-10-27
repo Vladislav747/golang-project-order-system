@@ -10,6 +10,8 @@ import (
 
 	pgx "github.com/jackc/pgx/v5"
 
+	time "time"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -86,17 +88,17 @@ func (_c *MockOutboxRepository_GetOutboxMessagesUnpublished_Call) RunAndReturn(r
 	return _c
 }
 
-// MarkOutboxMessageFailed provides a mock function with given fields: ctx, tx, id, lastError
-func (_m *MockOutboxRepository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error {
-	ret := _m.Called(ctx, tx, id, lastError)
+// MarkOutboxMessageFailed provides a mock function with given fields: ctx, tx, id, lastError, nextRetryAt
+func (_m *MockOutboxRepository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time) error {
+	ret := _m.Called(ctx, tx, id, lastError, nextRetryAt)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkOutboxMessageFailed")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, uuid.UUID, string) error); ok {
-		r0 = rf(ctx, tx, id, lastError)
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, uuid.UUID, string, time.Time) error); ok {
+		r0 = rf(ctx, tx, id, lastError, nextRetryAt)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -114,13 +116,14 @@ type MockOutboxRepository_MarkOutboxMessageFailed_Call struct {
 //   - tx pgx.Tx
 //   - id uuid.UUID
 //   - lastError string
-func (_e *MockOutboxRepository_Expecter) MarkOutboxMessageFailed(ctx interface{}, tx interface{}, id interface{}, lastError interface{}) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
-	return &MockOutboxRepository_MarkOutboxMessageFailed_Call{Call: _e.mock.On("MarkOutboxMessageFailed", ctx, tx, id, lastError)}
+//   - nextRetryAt time.Time
+func (_e *MockOutboxRepository_Expecter) MarkOutboxMessageFailed(ctx interface{}, tx interface{}, id interface{}, lastError interface{}, nextRetryAt interface{}) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
+	return &MockOutboxRepository_MarkOutboxMessageFailed_Call{Call: _e.mock.On("MarkOutboxMessageFailed", ctx, tx, id, lastError, nextRetryAt)}
 }
 
-func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) Run(run func(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string)) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
+func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) Run(run func(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time)) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(uuid.UUID), args[3].(string))
+		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(uuid.UUID), args[3].(string), args[4].(time.Time))
 	})
 	return _c
 }
@@ -130,7 +133,7 @@ func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) Return(_a0 error) *
 	return _c
 }
 
-func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) RunAndReturn(run func(context.Context, pgx.Tx, uuid.UUID, string) error) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
+func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) RunAndReturn(run func(context.Context, pgx.Tx, uuid.UUID, string, time.Time) error) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -31,7 +31,7 @@ type TxManager interface {
 type OutboxRepository interface {
 	GetOutboxMessagesUnpublished(ctx context.Context, limit int, maxAttempts int) ([]model.OutboxMessage, error)
 	MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
-	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error
+	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time) error
 }
 
 func NewOutboxRelay(
@@ -70,7 +70,7 @@ func (r *OutboxRelay) Run(ctx context.Context) {
 }
 
 func (r *OutboxRelay) relayMessages(ctx context.Context) {
-	// Получаем не опубликованные сообщения из репозитория
+	// Получаем неопубликованные сообщения из репозитория
 	msgs, err := r.repo.GetOutboxMessagesUnpublished(ctx, int(r.limit.Load()), int(r.maxAttempts.Load()))
 	if err != nil {
 		r.logger.Error("failed to get outbox messages", zap.Error(err))
@@ -118,7 +118,8 @@ func (r *OutboxRelay) relayMessages(ctx context.Context) {
 	err = pgx.BeginFunc(ctx, r.txManager, func(tx pgx.Tx) error {
 		for _, msg := range msgs {
 			if pubErr, ok := failed[msg.ID]; ok {
-				if markErr := r.repo.MarkOutboxMessageFailed(ctx, tx, msg.ID, pubErr.Error()); markErr != nil {
+				next := nextRetryAt(time.Now(), msg.Attempts+1, time.Second, 8*time.Second)
+				if markErr := r.repo.MarkOutboxMessageFailed(ctx, tx, msg.ID, pubErr.Error(), next); markErr != nil {
 					return markErr
 				}
 				continue
