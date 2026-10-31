@@ -24,17 +24,17 @@ func (_m *MockOutboxCleanerRepository) EXPECT() *MockOutboxCleanerRepository_Exp
 	return &MockOutboxCleanerRepository_Expecter{mock: &_m.Mock}
 }
 
-// CleanOutboxMessages provides a mock function with given fields: ctx, tx, retention, maxAttempts
-func (_m *MockOutboxCleanerRepository) CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retention time.Duration, maxAttempts int) error {
-	ret := _m.Called(ctx, tx, retention, maxAttempts)
+// CleanOutboxMessages provides a mock function with given fields: ctx, tx, retention
+func (_m *MockOutboxCleanerRepository) CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retention time.Duration) error {
+	ret := _m.Called(ctx, tx, retention)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CleanOutboxMessages")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, time.Duration, int) error); ok {
-		r0 = rf(ctx, tx, retention, maxAttempts)
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, time.Duration) error); ok {
+		r0 = rf(ctx, tx, retention)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -51,14 +51,13 @@ type MockOutboxCleanerRepository_CleanOutboxMessages_Call struct {
 //   - ctx context.Context
 //   - tx pgx.Tx
 //   - retention time.Duration
-//   - maxAttempts int
-func (_e *MockOutboxCleanerRepository_Expecter) CleanOutboxMessages(ctx interface{}, tx interface{}, retention interface{}, maxAttempts interface{}) *MockOutboxCleanerRepository_CleanOutboxMessages_Call {
-	return &MockOutboxCleanerRepository_CleanOutboxMessages_Call{Call: _e.mock.On("CleanOutboxMessages", ctx, tx, retention, maxAttempts)}
+func (_e *MockOutboxCleanerRepository_Expecter) CleanOutboxMessages(ctx interface{}, tx interface{}, retention interface{}) *MockOutboxCleanerRepository_CleanOutboxMessages_Call {
+	return &MockOutboxCleanerRepository_CleanOutboxMessages_Call{Call: _e.mock.On("CleanOutboxMessages", ctx, tx, retention)}
 }
 
-func (_c *MockOutboxCleanerRepository_CleanOutboxMessages_Call) Run(run func(ctx context.Context, tx pgx.Tx, retention time.Duration, maxAttempts int)) *MockOutboxCleanerRepository_CleanOutboxMessages_Call {
+func (_c *MockOutboxCleanerRepository_CleanOutboxMessages_Call) Run(run func(ctx context.Context, tx pgx.Tx, retention time.Duration)) *MockOutboxCleanerRepository_CleanOutboxMessages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(time.Duration), args[3].(int))
+		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(time.Duration))
 	})
 	return _c
 }
@@ -68,7 +67,7 @@ func (_c *MockOutboxCleanerRepository_CleanOutboxMessages_Call) Return(_a0 error
 	return _c
 }
 
-func (_c *MockOutboxCleanerRepository_CleanOutboxMessages_Call) RunAndReturn(run func(context.Context, pgx.Tx, time.Duration, int) error) *MockOutboxCleanerRepository_CleanOutboxMessages_Call {
+func (_c *MockOutboxCleanerRepository_CleanOutboxMessages_Call) RunAndReturn(run func(context.Context, pgx.Tx, time.Duration) error) *MockOutboxCleanerRepository_CleanOutboxMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }

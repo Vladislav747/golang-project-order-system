@@ -106,15 +106,14 @@ func (r *Repository) MarkOutboxMessageFailed(
 	return nil
 }
 
-func (r *Repository) CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retention time.Duration, maxAttempts int) error {
+func (r *Repository) CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retention time.Duration) error {
 
 	sqlQuery := `
         DELETE FROM outbox
 		WHERE (published_at IS NOT NULL AND published_at < NOW() - $1::interval)
-   			OR (published_at IS NULL AND attempts >= $2)
     `
 
-	tag, err := tx.Exec(ctx, sqlQuery, retention, maxAttempts)
+	tag, err := tx.Exec(ctx, sqlQuery, retention)
 	if err != nil {
 		r.logger.Error("failed to clean published messages in repository", zap.Error(err))
 		return err

@@ -48,7 +48,6 @@ func main() {
 			relay.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
 			cleaner.SetInterval(newCfg.Outbox.CleanupInterval)
 			cleaner.SetRetention(newCfg.Outbox.PublishedRetention)
-			cleaner.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
 		}
 		if err := provider.StartWatch(watchCtx, path, logger, onReload); err != nil {
 			logger.Error("config watch stopped", zap.Error(err))
@@ -98,7 +97,6 @@ func mustStartOutboxCleaner(cfg *config.Config, pool *pgxpool.Pool, logger *zap.
 		logger,
 		cfg.Outbox.CleanupInterval,
 		cfg.Outbox.PublishedRetention,
-		cfg.Outbox.MaxAttempts,
 		pool,
 	)
 

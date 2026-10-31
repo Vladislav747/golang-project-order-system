@@ -10,29 +10,26 @@ import (
 )
 
 type OutboxCleanerRepository interface {
-	CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retention time.Duration, maxAttempts int) error
+	CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retention time.Duration) error
 }
 
 type OutboxCleaner struct {
-	repo        OutboxCleanerRepository
-	logger      *zap.Logger
-	txManager   TxManager
-	interval    atomic.Int64
-	retention   atomic.Int64
-	maxAttempts atomic.Int64
+	repo      OutboxCleanerRepository
+	logger    *zap.Logger
+	txManager TxManager
+	interval  atomic.Int64
+	retention atomic.Int64
 }
 
 func NewOutboxCleaner(
 	repo OutboxCleanerRepository,
 	logger *zap.Logger,
 	interval, retention time.Duration,
-	maxAttempts int,
 	txManager TxManager,
 ) *OutboxCleaner {
 	c := &OutboxCleaner{repo: repo, logger: logger, txManager: txManager}
 	c.interval.Store(int64(interval))
 	c.retention.Store(int64(retention))
-	c.maxAttempts.Store(int64(maxAttempts))
 	return c
 }
 
@@ -56,7 +53,6 @@ func (c *OutboxCleaner) clean(ctx context.Context) {
 		return c.repo.CleanOutboxMessages(
 			ctx, tx,
 			time.Duration(c.retention.Load()),
-			int(c.maxAttempts.Load()),
 		)
 	})
 	if err != nil {
@@ -66,4 +62,3 @@ func (c *OutboxCleaner) clean(ctx context.Context) {
 
 func (c *OutboxCleaner) SetInterval(d time.Duration)  { c.interval.Store(int64(d)) }
 func (c *OutboxCleaner) SetRetention(d time.Duration) { c.retention.Store(int64(d)) }
-func (c *OutboxCleaner) SetMaxAttempts(n int)         { c.maxAttempts.Store(int64(n)) }
