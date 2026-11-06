@@ -23,6 +23,8 @@ type OutboxRelay struct {
 	maxAttempts    atomic.Int64
 	txManager      TxManager
 	deadLetterRepo DeadLetterRepository
+	backoffInitial atomic.Int64
+	backoffMax     atomic.Int64
 }
 
 type TxManager interface {
@@ -49,6 +51,8 @@ func NewOutboxRelay(
 	maxAttempts int,
 	txManager TxManager,
 	deadLetterRepo DeadLetterRepository,
+	backoffInitial time.Duration,
+	backoffMax time.Duration,
 ) *OutboxRelay {
 	r := &OutboxRelay{
 		repo:           repo,
@@ -60,6 +64,8 @@ func NewOutboxRelay(
 	r.interval.Store(int64(interval))
 	r.limit.Store(int64(limit))
 	r.maxAttempts.Store(int64(maxAttempts))
+	r.backoffInitial.Store(int64(backoffInitial))
+	r.backoffMax.Store(int64(backoffMax))
 	return r
 }
 
@@ -156,7 +162,12 @@ func (r *OutboxRelay) relayMessages(ctx context.Context) {
 					)
 					continue
 				}
-				next := nextRetryAt(time.Now(), attemptsAfter, time.Second, 8*time.Second)
+				next := nextRetryAt(
+					time.Now(),
+					attemptsAfter,
+					time.Duration(r.backoffInitial.Load()),
+					time.Duration(r.backoffMax.Load()),
+				)
 				if markErr := r.repo.MarkOutboxMessageFailed(ctx, tx, msg.ID, pubErr.Error(), next); markErr != nil {
 					return markErr
 				}
@@ -184,4 +195,12 @@ func (r *OutboxRelay) SetInterval(d time.Duration) {
 
 func (r *OutboxRelay) SetMaxAttempts(n int) {
 	r.maxAttempts.Store(int64(n))
+}
+
+func (r *OutboxRelay) SetBackoffInitial(d time.Duration) {
+	r.backoffInitial.Store(int64(d))
+}
+
+func (r *OutboxRelay) SetBackoffMax(d time.Duration) {
+	r.backoffMax.Store(int64(d))
 }

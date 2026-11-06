@@ -47,6 +47,8 @@ func main() {
 			relay.SetInterval(newCfg.Outbox.RelayInterval)
 			relay.SetLimit(newCfg.Outbox.Limit)
 			relay.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
+			relay.SetBackoffInitial(newCfg.Outbox.BackoffInitial)
+			relay.SetBackoffMax(newCfg.Outbox.BackoffMax)
 			cleaner.SetInterval(newCfg.Outbox.CleanupInterval)
 			cleaner.SetRetention(newCfg.Outbox.PublishedRetention)
 		}
@@ -80,6 +82,8 @@ func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafk
 		cfg.Outbox.MaxAttempts,
 		pool, // TxManager
 		deadLetterRepo,
+		cfg.Outbox.BackoffInitial,
+		cfg.Outbox.BackoffMax,
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
