@@ -15,13 +15,14 @@ import (
 )
 
 type OutboxRelay struct {
-	repo        OutboxRepository
-	producer    *kafka.Producer
-	logger      *zap.Logger
-	interval    atomic.Int64
-	limit       atomic.Int64
-	maxAttempts atomic.Int64
-	txManager   TxManager
+	repo           OutboxRepository
+	producer       *kafka.Producer
+	logger         *zap.Logger
+	interval       atomic.Int64
+	limit          atomic.Int64
+	maxAttempts    atomic.Int64
+	txManager      TxManager
+	deadLetterRepo DeadLetterRepository
 }
 
 type TxManager interface {
@@ -32,6 +33,11 @@ type OutboxRepository interface {
 	GetOutboxMessagesUnpublished(ctx context.Context, limit int, maxAttempts int) ([]model.OutboxMessage, error)
 	MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time) error
+	DeleteOutboxMessage(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
+}
+
+type DeadLetterRepository interface {
+	Insert(ctx context.Context, tx pgx.Tx, letter model.DeadLetter) error
 }
 
 func NewOutboxRelay(
@@ -41,12 +47,15 @@ func NewOutboxRelay(
 	interval time.Duration,
 	limit int,
 	maxAttempts int,
-	txManager TxManager) *OutboxRelay {
+	txManager TxManager,
+	deadLetterRepo DeadLetterRepository,
+) *OutboxRelay {
 	r := &OutboxRelay{
-		repo:      repo,
-		producer:  producer,
-		logger:    logger,
-		txManager: txManager,
+		repo:           repo,
+		producer:       producer,
+		logger:         logger,
+		txManager:      txManager,
+		deadLetterRepo: deadLetterRepo,
 	}
 	r.interval.Store(int64(interval))
 	r.limit.Store(int64(limit))
@@ -118,7 +127,36 @@ func (r *OutboxRelay) relayMessages(ctx context.Context) {
 	err = pgx.BeginFunc(ctx, r.txManager, func(tx pgx.Tx) error {
 		for _, msg := range msgs {
 			if pubErr, ok := failed[msg.ID]; ok {
-				next := nextRetryAt(time.Now(), msg.Attempts+1, time.Second, 8*time.Second)
+				attemptsAfter := msg.Attempts + 1
+				// попытки исчерпаны — уводим в DLQ, а не ретраим
+				if attemptsAfter >= int(r.maxAttempts.Load()) {
+					letter := model.DeadLetter{
+						Source:           model.DeadLetterSourceOutbox,
+						Payload:          msg.Payload,
+						OriginalTopic:    string(msg.Topic),
+						OriginalOutboxID: &msg.ID,
+						AggregateType:    &msg.AggregateType,
+						AggregateID:      &msg.AggregateID,
+						EventType:        &msg.EventType,
+						ErrorText:        pubErr.Error(),
+						ErrorClass:       model.ErrorClassRetryable,
+						Attempts:         attemptsAfter,
+						FirstFailedAt:    time.Now(),
+					}
+
+					if err := r.deadLetterRepo.Insert(ctx, tx, letter); err != nil {
+						return err
+					}
+					if err := r.repo.DeleteOutboxMessage(ctx, tx, msg.ID); err != nil {
+						return err
+					}
+					r.logger.Warn("outbox message moved to DLQ",
+						zap.String("id", msg.ID.String()),
+						zap.Error(pubErr),
+					)
+					continue
+				}
+				next := nextRetryAt(time.Now(), attemptsAfter, time.Second, 8*time.Second)
 				if markErr := r.repo.MarkOutboxMessageFailed(ctx, tx, msg.ID, pubErr.Error(), next); markErr != nil {
 					return markErr
 				}

@@ -13,6 +13,7 @@ import (
 
 	bootstrap "github.com/Vladislav747/golang-project-order-system/internal/bootstrap"
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
+	deadletter "github.com/Vladislav747/golang-project-order-system/internal/repository/deadletter"
 	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 	"github.com/Vladislav747/golang-project-order-system/internal/worker"
@@ -69,6 +70,7 @@ func main() {
 
 func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) (*worker.OutboxRelay, context.CancelFunc, *sync.WaitGroup) {
 	repositoryOutbox := repositoryOutbox.NewRepository(pool, logger)
+	deadLetterRepo := deadletter.NewRepository(pool, logger)
 	relay := worker.NewOutboxRelay(
 		repositoryOutbox,
 		producer,
@@ -77,6 +79,7 @@ func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafk
 		cfg.Outbox.Limit,
 		cfg.Outbox.MaxAttempts,
 		pool, // TxManager
+		deadLetterRepo,
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())

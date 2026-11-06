@@ -123,3 +123,17 @@ func (r *Repository) CleanOutboxMessages(ctx context.Context, tx pgx.Tx, retenti
 	}
 	return nil
 }
+
+func (r *Repository) DeleteOutboxMessage(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
+	sqlQuery := `
+		DELETE FROM outbox
+		WHERE id = $1
+	`
+
+	_, err := tx.Exec(ctx, sqlQuery, id)
+	if err != nil {
+		r.logger.Error("failed to delete outbox message in repository", zap.Error(err))
+		return err
+	}
+	return nil
+}
