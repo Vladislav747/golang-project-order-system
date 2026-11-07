@@ -16,7 +16,7 @@ import (
 
 type OutboxRelay struct {
 	repo           OutboxRepository
-	producer       *kafka.Producer
+	producer       EventPublisher
 	logger         *zap.Logger
 	interval       atomic.Int64
 	limit          atomic.Int64
@@ -31,11 +31,16 @@ type TxManager interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
+type EventPublisher interface {
+	PublishEvents(events []kafka.PublishMessage) error
+}
+
 type OutboxRepository interface {
 	GetOutboxMessagesUnpublished(ctx context.Context, limit int, maxAttempts int) ([]model.OutboxMessage, error)
 	MarkOutboxMessagePublished(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 	MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time) error
 	DeleteOutboxMessage(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
+	GetExhaustedOutboxMessages(ctx context.Context, maxAttempts int) ([]model.OutboxMessage, error)
 }
 
 type DeadLetterRepository interface {
@@ -44,7 +49,7 @@ type DeadLetterRepository interface {
 
 func NewOutboxRelay(
 	repo OutboxRepository,
-	producer *kafka.Producer,
+	producer EventPublisher,
 	logger *zap.Logger,
 	interval time.Duration,
 	limit int,
@@ -85,6 +90,47 @@ func (r *OutboxRelay) Run(ctx context.Context) {
 }
 
 func (r *OutboxRelay) relayMessages(ctx context.Context) {
+	exhausted, err := r.repo.GetExhaustedOutboxMessages(ctx, int(r.maxAttempts.Load()))
+	if err != nil {
+		r.logger.Error("failed to get exhausted outbox messages", zap.Error(err))
+
+	} else if len(exhausted) > 0 {
+		err = pgx.BeginFunc(ctx, r.txManager, func(tx pgx.Tx) error {
+			for _, msg := range exhausted {
+				errorText := "exhausted attempts"
+				if msg.LastError != nil {
+					errorText = *msg.LastError
+				}
+				letter := model.DeadLetter{
+					Source:           model.DeadLetterSourceOutbox,
+					Payload:          msg.Payload,
+					OriginalTopic:    string(msg.Topic),
+					OriginalOutboxID: &msg.ID,
+					AggregateType:    &msg.AggregateType,
+					AggregateID:      &msg.AggregateID,
+					EventType:        &msg.EventType,
+					ErrorText:        errorText,
+					ErrorClass:       model.ErrorClassRetryable,
+					Attempts:         msg.Attempts,
+					FirstFailedAt:    time.Now(),
+				}
+				if err := r.deadLetterRepo.Insert(ctx, tx, letter); err != nil {
+					return err
+				}
+				if err := r.repo.DeleteOutboxMessage(ctx, tx, msg.ID); err != nil {
+					return err
+				}
+				r.logger.Warn("exhausted outbox message moved to DLQ",
+					zap.String("id", msg.ID.String()),
+				)
+			}
+			return nil
+		})
+		if err != nil {
+			r.logger.Error("failed to move exhausted outbox messages to DLQ", zap.Error(err))
+		}
+	}
+
 	// Получаем неопубликованные сообщения из репозитория
 	msgs, err := r.repo.GetOutboxMessagesUnpublished(ctx, int(r.limit.Load()), int(r.maxAttempts.Load()))
 	if err != nil {

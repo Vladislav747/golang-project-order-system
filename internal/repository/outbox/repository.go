@@ -137,3 +137,27 @@ func (r *Repository) DeleteOutboxMessage(ctx context.Context, tx pgx.Tx, id uuid
 	}
 	return nil
 }
+
+func (r *Repository) GetExhaustedOutboxMessages(ctx context.Context, maxAttempts int) ([]model.OutboxMessage, error) {
+	sqlQuery := `
+	SELECT *
+	FROM outbox
+	WHERE published_at IS NULL
+	  AND attempts >= $1
+	ORDER BY created_at ASC
+`
+
+	rows, err := r.pool.Query(ctx, sqlQuery, maxAttempts)
+	if err != nil {
+		r.logger.Error("failed to get exhausted outbox messages in repository", zap.Error(err))
+		return nil, err
+	}
+
+	outboxMessages, err := pgx.CollectRows(rows, pgx.RowToStructByName[model.OutboxMessage])
+	if err != nil {
+		r.logger.Error("failed to collect outboxMessages from rows - GetExhaustedOutboxMessages", zap.Error(err))
+		return nil, err
+	}
+
+	return outboxMessages, nil
+}
