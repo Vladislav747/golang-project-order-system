@@ -16,9 +16,16 @@ type Producer struct {
 }
 
 type PublishMessage struct {
+	Key      []byte
 	Topic    string
 	Payload  []byte
 	Metadata any // uuid.UUID из outbox
+	Headers  []RecordHeader
+}
+
+type RecordHeader struct {
+	Key   string
+	Value string
 }
 
 type PublishError struct {
@@ -97,11 +104,23 @@ func (p *Producer) PublishEvents(events []PublishMessage) error {
 	msgs := make([]*sarama.ProducerMessage, 0, len(events))
 
 	for _, event := range events {
-		msgs = append(msgs, &sarama.ProducerMessage{
+		msg := &sarama.ProducerMessage{
 			Topic:    event.Topic,
 			Value:    sarama.ByteEncoder(event.Payload),
-			Metadata: event.Metadata, // важно!
-		})
+			Metadata: event.Metadata,
+		}
+
+		if len(event.Key) > 0 {
+			msg.Key = sarama.ByteEncoder(event.Key)
+		}
+
+		for _, h := range event.Headers {
+			msg.Headers = append(msg.Headers, sarama.RecordHeader{
+				Key:   []byte(h.Key),
+				Value: []byte(h.Value),
+			})
+		}
+		msgs = append(msgs, msg)
 	}
 
 	err := p.producer.SendMessages(msgs)
