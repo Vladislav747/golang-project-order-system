@@ -13,6 +13,7 @@ import (
 
 const (
 	IntegrationOrdersTopic = "orders.create"
+	IntegrationDLQTopic    = "orders.dlq"
 )
 
 func setupKafka(t *testing.T) []string {
@@ -27,6 +28,7 @@ func setupKafka(t *testing.T) []string {
 	brokers, err := container.Brokers(ctx)
 	require.NoError(t, err)
 	createTopic(t, brokers, IntegrationOrdersTopic)
+	createTopic(t, brokers, IntegrationDLQTopic)
 
 	return brokers
 }
