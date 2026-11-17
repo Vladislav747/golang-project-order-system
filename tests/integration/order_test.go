@@ -136,6 +136,7 @@ func getMocks(t *testing.T) *Mocks {
 		repositoryOrder.NewRepository(pool, logger),
 		repositoryOrderEvent.NewRepository(pool, logger),
 		repositoryOutbox.NewRepository(pool, logger),
+		nil,  // dead letter repo — не нужен в sync-тестах
 		pool, // TxManager: у *pgxpool.Pool есть Begin
 		nil,
 		logger,

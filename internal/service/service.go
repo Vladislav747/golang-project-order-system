@@ -41,6 +41,7 @@ type Service struct {
 	repositoryOrder      RepositoryOrder
 	repositoryOrderEvent RepositoryOrderEvent
 	repositoryOutbox     RepositoryOutbox
+	repositoryDeadLetter RepositoryDeadLetter
 	txManager            TxManager
 	producer             *kafka.Producer
 	logger               *zap.Logger
@@ -50,13 +51,16 @@ func NewService(
 	repositoryOrder RepositoryOrder,
 	repositoryOrderEvent RepositoryOrderEvent,
 	repositoryOutbox RepositoryOutbox,
-	txManager TxManager, producer *kafka.Producer,
+	repositoryDeadLetter RepositoryDeadLetter,
+	txManager TxManager,
+	producer *kafka.Producer,
 	logger *zap.Logger,
 ) *Service {
 	return &Service{
 		repositoryOrder:      repositoryOrder,
 		repositoryOrderEvent: repositoryOrderEvent,
 		repositoryOutbox:     repositoryOutbox,
+		repositoryDeadLetter: repositoryDeadLetter,
 		txManager:            txManager,
 		producer:             producer,
 		logger:               logger,

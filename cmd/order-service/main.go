@@ -19,6 +19,7 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/handler/health"
 	orderHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
 	orderEventHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order_event"
+	deadletter "github.com/Vladislav747/golang-project-order-system/internal/repository/deadletter"
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
@@ -175,7 +176,8 @@ func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.L
 	repositoryOrder := repositoryOrder.NewRepository(pool, logger)
 	repositoryOrderEvent := repositoryOrderEvent.NewRepository(pool, logger)
 	repositoryOutbox := repositoryOutbox.NewRepository(pool, logger)
-	return service.NewService(repositoryOrder, repositoryOrderEvent, repositoryOutbox, pool, producer, logger)
+	deadLetterRepo := deadletter.NewRepository(pool, logger)
+	return service.NewService(repositoryOrder, repositoryOrderEvent, repositoryOutbox, deadLetterRepo, pool, producer, logger)
 }
 
 func mustStartConsumer(cfg *config.Config, svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {

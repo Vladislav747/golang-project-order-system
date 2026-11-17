@@ -122,10 +122,12 @@ func getAsyncMocks(t *testing.T) *AsyncMocks {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = producer.Close() })
 
+	deadLetterRepo := deadletter.NewRepository(pool, logger)
 	svc := service.NewService(
 		repositoryOrder.NewRepository(pool, logger),
 		repositoryOrderEvent.NewRepository(pool, logger),
 		repositoryOutbox.NewRepository(pool, logger),
+		deadLetterRepo,
 		pool,
 		producer,
 		logger,
@@ -133,7 +135,7 @@ func getAsyncMocks(t *testing.T) *AsyncMocks {
 
 	dlqSink := dlq.NewSink(
 		producer,
-		deadletter.NewRepository(pool, logger),
+		deadLetterRepo,
 		pool,
 		IntegrationDLQTopic,
 		logger,

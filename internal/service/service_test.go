@@ -155,7 +155,7 @@ func createMocks(t *testing.T) (
 	txManager := mocks.NewMockTxManager(t)
 	mockTx := mocks.NewMockTx(t)
 
-	svc := NewService(repoOrder, repoEvent, repoOutbox, txManager, nil, zap.NewNop())
+	svc := NewService(repoOrder, repoEvent, repoOutbox, nil, txManager, nil, zap.NewNop())
 
 	return repoOrder, repoEvent, repoOutbox, txManager, mockTx, svc
 }
