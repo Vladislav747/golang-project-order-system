@@ -24,6 +24,7 @@ import (
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
+	dlqhandler "github.com/Vladislav747/golang-project-order-system/internal/transport/dlq"
 	grpcserver "github.com/Vladislav747/golang-project-order-system/internal/transport/grpcserver"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 )
@@ -48,9 +49,11 @@ func main() {
 	orderEventHandler := orderEventHandler.NewHandler(svc, logger, provider)
 	healthHandler := health.NewHandler(health.NewDBChecker(pool))
 
+	dlqHandler := dlqhandler.NewHandler(svc, logger, provider)
+
 	// Регистрируем маршруты
 	mux := http.NewServeMux()
-	handler.RegisterRoutes(mux, logger, orderHandler, orderEventHandler, healthHandler)
+	handler.RegisterRoutes(mux, logger, orderHandler, orderEventHandler, healthHandler, dlqHandler)
 
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.Port),

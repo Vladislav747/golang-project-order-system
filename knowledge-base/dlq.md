@@ -27,10 +27,10 @@ Consumer: **MarkMessage только после успеха handler или ус
 
 ## Не сделано / дыры
 
-1. **Wiring `mustStartConsumer`** в `cmd/order-service/main.go` — передать `dlq.NewSink`, `cfg.DLQ.*`, `pool`, `producer`. Без этого order-service не собирается. Делать вместе с Phase D wiring HTTP.
-2. Phase C хвост: юнит `processMessage`, integration «битый JSON → DLQ, следующий ок».
-3. **Phase D (сейчас):** repo + `service_dlq` (List/Get/Retry outbox+kafka) готовы → дальше `handler/dlq` + router + wiring main (+ опционально `RetryDeadLetters` батч).
-4. Integration Postgres сейчас тянет только `00001_init.sql` — нет `dead_letters` (ломается только путь в DLQ).
+1. **Блокер:** `mustStartConsumer` — `dlq.NewSink` + `cfg.DLQ.*` + `pool`/`producer` (order-service не собирается).
+2. Phase C хвост: юнит `processMessage`, integration «битый JSON → DLQ».
+3. Phase D опционально: батч `POST /admin/dlq/retry`, тесты handler; перенос `transport/dlq` → `handler/dlq`.
+4. Integration Postgres тянет только `00001_init.sql` — нет `dead_letters` на DLQ-пути.
 
 ## Ключевые файлы
 

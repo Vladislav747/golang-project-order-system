@@ -11,6 +11,7 @@ import (
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
+	"github.com/Vladislav747/golang-project-order-system/internal/pkg/httpx"
 	"github.com/Vladislav747/golang-project-order-system/internal/pkg/utils"
 )
 
@@ -98,15 +99,7 @@ func (h *Handler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	orders, err := json.Marshal(res)
-	if err != nil {
-		h.logger.Error("failed to marshal order", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(orders)
+	httpx.WriteJSON(w, http.StatusOK, res)
 }
 
 func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
@@ -130,15 +123,7 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := json.Marshal(res)
-	if err != nil {
-		h.logger.Error("failed to marshal order", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(order)
+	httpx.WriteJSON(w, http.StatusOK, res)
 }
 
 func (h *Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {

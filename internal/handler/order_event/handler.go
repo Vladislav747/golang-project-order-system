@@ -2,13 +2,13 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"go.uber.org/zap"
 
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
+	"github.com/Vladislav747/golang-project-order-system/internal/pkg/httpx"
 	"github.com/Vladislav747/golang-project-order-system/internal/pkg/utils"
 )
 
@@ -43,13 +43,5 @@ func (h *Handler) GetOrderEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	orders, err := json.Marshal(res)
-	if err != nil {
-		h.logger.Error("failed to marshal order", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(orders)
+	httpx.WriteJSON(w, http.StatusOK, res)
 }

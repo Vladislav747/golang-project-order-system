@@ -9,6 +9,7 @@ import (
 	"github.com/Vladislav747/golang-project-order-system/internal/handler/health"
 	orderhandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
 	ordereventhandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order_event"
+	dlqhandler "github.com/Vladislav747/golang-project-order-system/internal/transport/dlq"
 )
 
 func RegisterRoutes(
@@ -17,6 +18,7 @@ func RegisterRoutes(
 	orderHandler *orderhandler.Handler,
 	orderEventHandler *ordereventhandler.Handler,
 	healthHandler *health.Handler,
+	dlqHandler *dlqhandler.Handler,
 ) {
 	mux.HandleFunc("GET /orders", InstrumentMetricsHandler(logger, "GET", "/orders", orderHandler.GetOrders))
 	mux.HandleFunc("POST /order", InstrumentMetricsHandler(logger, "POST", "/order", orderHandler.CreateOrder))
@@ -27,6 +29,10 @@ func RegisterRoutes(
 	mux.HandleFunc("DELETE /orders/hard/{id}", InstrumentMetricsHandler(logger, "DELETE", "/orders/hard/{id}", orderHandler.DeleteOrder))
 
 	mux.HandleFunc("GET /order-events", InstrumentMetricsHandler(logger, "GET", "/order-events", orderEventHandler.GetOrderEvents))
+
+	mux.HandleFunc("GET /admin/dlq", InstrumentMetricsHandler(logger, "GET", "/admin/dlq", dlqHandler.List))
+	mux.HandleFunc("GET /admin/dlq/{id}", InstrumentMetricsHandler(logger, "GET", "/admin/dlq/{id}", dlqHandler.Get))
+	mux.HandleFunc("POST /admin/dlq/{id}/retry", InstrumentMetricsHandler(logger, "POST", "/admin/dlq/{id}/retry", dlqHandler.Retry))
 
 	// для readiness и liveness probes
 	mux.HandleFunc("GET /livez", healthHandler.Live)
