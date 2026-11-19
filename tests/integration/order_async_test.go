@@ -14,12 +14,19 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	"github.com/Vladislav747/golang-project-order-system/internal/dlq"
 	"github.com/Vladislav747/golang-project-order-system/internal/model"
+	deadletter "github.com/Vladislav747/golang-project-order-system/internal/repository/deadletter"
 	repositoryOrder "github.com/Vladislav747/golang-project-order-system/internal/repository/order"
 	repositoryOrderEvent "github.com/Vladislav747/golang-project-order-system/internal/repository/order_event"
 	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
 	"github.com/Vladislav747/golang-project-order-system/internal/service"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
+)
+
+const (
+	integrationConsumerMaxRetry  = 3
+	integrationConsumerRetryWait = 200 * time.Millisecond
 )
 
 type AsyncMocks struct {
@@ -115,12 +122,22 @@ func getAsyncMocks(t *testing.T) *AsyncMocks {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = producer.Close() })
 
+	deadLetterRepo := deadletter.NewRepository(pool, logger)
 	svc := service.NewService(
 		repositoryOrder.NewRepository(pool, logger),
 		repositoryOrderEvent.NewRepository(pool, logger),
 		repositoryOutbox.NewRepository(pool, logger),
+		deadLetterRepo,
 		pool,
 		producer,
+		logger,
+	)
+
+	dlqSink := dlq.NewSink(
+		producer,
+		deadLetterRepo,
+		pool,
+		IntegrationDLQTopic,
 		logger,
 	)
 
@@ -129,6 +146,9 @@ func getAsyncMocks(t *testing.T) *AsyncMocks {
 		IntegrationOrdersTopic,
 		"integration-order-service",
 		svc,
+		dlqSink,
+		integrationConsumerMaxRetry,
+		integrationConsumerRetryWait,
 		logger,
 	)
 	require.NoError(t, err)

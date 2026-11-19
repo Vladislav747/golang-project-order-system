@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -34,33 +35,45 @@ func setupPostgres(t *testing.T) *pgxpool.Pool {
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
-	migration, err := os.ReadFile(migrationFile(t))
-	require.NoError(t, err)
-	upSQL := strings.SplitN(string(migration), "-- +goose Down", 2)[0]
-	_, err = pool.Exec(ctx, upSQL)
-	require.NoError(t, err)
+	for _, path := range migrationFiles(t) {
+		migration, err := os.ReadFile(path)
+		require.NoError(t, err, path)
+		upSQL := strings.SplitN(string(migration), "-- +goose Down", 2)[0]
+		_, err = pool.Exec(ctx, upSQL)
+		require.NoError(t, err, path)
+	}
 
 	t.Cleanup(pool.Close)
 
 	return pool
 }
 
-// migrationFile ищет migrations/00001_init.sql от cwd вверх до корня модуля.
-// go test запускается из каталога пакета (tests/integration), не из корня репо.
-func migrationFile(t *testing.T) string {
+// migrationFiles ищет migrations/*.sql от cwd вверх до корня модуля
+// и возвращает пути в лексикографическом порядке (00001, 00002, …).
+func migrationFiles(t *testing.T) []string {
 	t.Helper()
 
 	dir, err := os.Getwd()
 	require.NoError(t, err)
 
 	for {
-		candidate := filepath.Join(dir, "migrations", "00001_init.sql")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
+		migrationsDir := filepath.Join(dir, "migrations")
+		entries, err := os.ReadDir(migrationsDir)
+		if err == nil {
+			var files []string
+			for _, e := range entries {
+				if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
+					continue
+				}
+				files = append(files, filepath.Join(migrationsDir, e.Name()))
+			}
+			sort.Strings(files)
+			require.NotEmpty(t, files, "no *.sql in %s", migrationsDir)
+			return files
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			t.Fatal("migrations/00001_init.sql not found from ", dir)
+			t.Fatal("migrations/ not found from ", dir)
 		}
 		dir = parent
 	}

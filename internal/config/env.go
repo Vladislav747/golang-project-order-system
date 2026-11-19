@@ -62,6 +62,9 @@ func (cfg *Config) validateEnv() error {
 	if cfg.Kafka.ConsumerGroup == "" {
 		return fmt.Errorf("KAFKA_CONSUMER_GROUP is not set")
 	}
+	if cfg.DLQ.Topic == "" {
+		return fmt.Errorf("dlq.topic is not set")
+	}
 	return nil
 }
 

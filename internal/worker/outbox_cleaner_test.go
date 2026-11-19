@@ -25,7 +25,7 @@ func TestOutboxCleaner_Clean_OK(t *testing.T) {
 	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
 
 	repoOutbox.EXPECT().
-		CleanOutboxMessages(mock.Anything, mockTx, 24*time.Hour, 3).
+		CleanOutboxMessages(mock.Anything, mockTx, 24*time.Hour).
 		Return(nil)
 
 	cleaner := NewOutboxCleaner(
@@ -33,7 +33,6 @@ func TestOutboxCleaner_Clean_OK(t *testing.T) {
 		zap.NewNop(),
 		time.Hour,    // interval — для clean не важен
 		24*time.Hour, // должен совпасть с EXPECT
-		3,            // maxAttempts — тоже
 		txManager,
 	)
 	cleaner.clean(ctx)
@@ -46,13 +45,19 @@ func TestOutboxCleaner_Clean_Error(t *testing.T) {
 	repoOutbox, txManager, mockTx := createMocks(t)
 
 	txManager.EXPECT().Begin(mock.Anything).Return(mockTx, nil)
-	mockTx.EXPECT().Rollback(mock.Anything).Return(nil)
-	mockTx.EXPECT().Commit(mock.Anything).Return(nil)
+	mockTx.EXPECT().Rollback(mock.Anything).Return(nil).Times(2)
 
 	repoOutbox.EXPECT().
-		CleanOutboxMessages(mock.Anything, mockTx, 24*time.Hour, 3).
+		CleanOutboxMessages(mock.Anything, mockTx, 24*time.Hour).
 		Return(errors.New("error"))
 
+	cleaner := NewOutboxCleaner(
+		repoOutbox,
+		zap.NewNop(),
+		time.Hour,
+		24*time.Hour,
+		txManager,
+	)
 	cleaner.clean(ctx)
 }
 

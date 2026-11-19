@@ -13,6 +13,7 @@ import (
 
 	bootstrap "github.com/Vladislav747/golang-project-order-system/internal/bootstrap"
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
+	deadletter "github.com/Vladislav747/golang-project-order-system/internal/repository/deadletter"
 	repositoryOutbox "github.com/Vladislav747/golang-project-order-system/internal/repository/outbox"
 	"github.com/Vladislav747/golang-project-order-system/internal/transport/kafka"
 	"github.com/Vladislav747/golang-project-order-system/internal/worker"
@@ -46,9 +47,10 @@ func main() {
 			relay.SetInterval(newCfg.Outbox.RelayInterval)
 			relay.SetLimit(newCfg.Outbox.Limit)
 			relay.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
+			relay.SetBackoffInitial(newCfg.Outbox.BackoffInitial)
+			relay.SetBackoffMax(newCfg.Outbox.BackoffMax)
 			cleaner.SetInterval(newCfg.Outbox.CleanupInterval)
 			cleaner.SetRetention(newCfg.Outbox.PublishedRetention)
-			cleaner.SetMaxAttempts(newCfg.Outbox.MaxAttempts)
 		}
 		if err := provider.StartWatch(watchCtx, path, logger, onReload); err != nil {
 			logger.Error("config watch stopped", zap.Error(err))
@@ -70,6 +72,7 @@ func main() {
 
 func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.Logger) (*worker.OutboxRelay, context.CancelFunc, *sync.WaitGroup) {
 	repositoryOutbox := repositoryOutbox.NewRepository(pool, logger)
+	deadLetterRepo := deadletter.NewRepository(pool, logger)
 	relay := worker.NewOutboxRelay(
 		repositoryOutbox,
 		producer,
@@ -78,6 +81,9 @@ func mustStartOutboxRelay(cfg *config.Config, pool *pgxpool.Pool, producer *kafk
 		cfg.Outbox.Limit,
 		cfg.Outbox.MaxAttempts,
 		pool, // TxManager
+		deadLetterRepo,
+		cfg.Outbox.BackoffInitial,
+		cfg.Outbox.BackoffMax,
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -98,7 +104,6 @@ func mustStartOutboxCleaner(cfg *config.Config, pool *pgxpool.Pool, logger *zap.
 		logger,
 		cfg.Outbox.CleanupInterval,
 		cfg.Outbox.PublishedRetention,
-		cfg.Outbox.MaxAttempts,
 		pool,
 	)
 

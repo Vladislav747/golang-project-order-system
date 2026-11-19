@@ -194,3 +194,8 @@ protoc -I internal/api \
   ```
   make load-k6-smoke
   ```
+
+count тут запускает тесты те же самые несколько раз подряд
+```
+go test ./internal/transport/kafka/ -run TestClassify -count=1
+```

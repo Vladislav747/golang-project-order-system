@@ -2,9 +2,10 @@ package health
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/Vladislav747/golang-project-order-system/internal/pkg/httpx"
 )
 
 // Checker проверяет готовность зависимостей принимать трафик.
@@ -21,7 +22,7 @@ func NewHandler(checker Checker) *Handler {
 }
 
 func (h *Handler) Live(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
@@ -29,17 +30,11 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := h.checker.Ready(ctx); err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		httpx.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{
 			"status": "not_ready",
 			"error":  err.Error(),
 		})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
-}
-
-func writeJSON(w http.ResponseWriter, code int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(body)
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }

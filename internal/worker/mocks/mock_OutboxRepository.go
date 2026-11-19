@@ -10,6 +10,8 @@ import (
 
 	pgx "github.com/jackc/pgx/v5"
 
+	time "time"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -86,17 +88,17 @@ func (_c *MockOutboxRepository_GetOutboxMessagesUnpublished_Call) RunAndReturn(r
 	return _c
 }
 
-// MarkOutboxMessageFailed provides a mock function with given fields: ctx, tx, id, lastError
-func (_m *MockOutboxRepository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string) error {
-	ret := _m.Called(ctx, tx, id, lastError)
+// MarkOutboxMessageFailed provides a mock function with given fields: ctx, tx, id, lastError, nextRetryAt
+func (_m *MockOutboxRepository) MarkOutboxMessageFailed(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time) error {
+	ret := _m.Called(ctx, tx, id, lastError, nextRetryAt)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkOutboxMessageFailed")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, uuid.UUID, string) error); ok {
-		r0 = rf(ctx, tx, id, lastError)
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, uuid.UUID, string, time.Time) error); ok {
+		r0 = rf(ctx, tx, id, lastError, nextRetryAt)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -114,13 +116,14 @@ type MockOutboxRepository_MarkOutboxMessageFailed_Call struct {
 //   - tx pgx.Tx
 //   - id uuid.UUID
 //   - lastError string
-func (_e *MockOutboxRepository_Expecter) MarkOutboxMessageFailed(ctx interface{}, tx interface{}, id interface{}, lastError interface{}) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
-	return &MockOutboxRepository_MarkOutboxMessageFailed_Call{Call: _e.mock.On("MarkOutboxMessageFailed", ctx, tx, id, lastError)}
+//   - nextRetryAt time.Time
+func (_e *MockOutboxRepository_Expecter) MarkOutboxMessageFailed(ctx interface{}, tx interface{}, id interface{}, lastError interface{}, nextRetryAt interface{}) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
+	return &MockOutboxRepository_MarkOutboxMessageFailed_Call{Call: _e.mock.On("MarkOutboxMessageFailed", ctx, tx, id, lastError, nextRetryAt)}
 }
 
-func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) Run(run func(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string)) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
+func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) Run(run func(ctx context.Context, tx pgx.Tx, id uuid.UUID, lastError string, nextRetryAt time.Time)) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(uuid.UUID), args[3].(string))
+		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(uuid.UUID), args[3].(string), args[4].(time.Time))
 	})
 	return _c
 }
@@ -130,7 +133,7 @@ func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) Return(_a0 error) *
 	return _c
 }
 
-func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) RunAndReturn(run func(context.Context, pgx.Tx, uuid.UUID, string) error) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
+func (_c *MockOutboxRepository_MarkOutboxMessageFailed_Call) RunAndReturn(run func(context.Context, pgx.Tx, uuid.UUID, string, time.Time) error) *MockOutboxRepository_MarkOutboxMessageFailed_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -179,6 +182,113 @@ func (_c *MockOutboxRepository_MarkOutboxMessagePublished_Call) Return(_a0 error
 }
 
 func (_c *MockOutboxRepository_MarkOutboxMessagePublished_Call) RunAndReturn(run func(context.Context, pgx.Tx, uuid.UUID) error) *MockOutboxRepository_MarkOutboxMessagePublished_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteOutboxMessage provides a mock function with given fields: ctx, tx, id
+func (_m *MockOutboxRepository) DeleteOutboxMessage(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
+	ret := _m.Called(ctx, tx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteOutboxMessage")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, uuid.UUID) error); ok {
+		r0 = rf(ctx, tx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockOutboxRepository_DeleteOutboxMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteOutboxMessage'
+type MockOutboxRepository_DeleteOutboxMessage_Call struct {
+	*mock.Call
+}
+
+// DeleteOutboxMessage is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tx pgx.Tx
+//   - id uuid.UUID
+func (_e *MockOutboxRepository_Expecter) DeleteOutboxMessage(ctx interface{}, tx interface{}, id interface{}) *MockOutboxRepository_DeleteOutboxMessage_Call {
+	return &MockOutboxRepository_DeleteOutboxMessage_Call{Call: _e.mock.On("DeleteOutboxMessage", ctx, tx, id)}
+}
+
+func (_c *MockOutboxRepository_DeleteOutboxMessage_Call) Run(run func(ctx context.Context, tx pgx.Tx, id uuid.UUID)) *MockOutboxRepository_DeleteOutboxMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(pgx.Tx), args[2].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockOutboxRepository_DeleteOutboxMessage_Call) Return(_a0 error) *MockOutboxRepository_DeleteOutboxMessage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockOutboxRepository_DeleteOutboxMessage_Call) RunAndReturn(run func(context.Context, pgx.Tx, uuid.UUID) error) *MockOutboxRepository_DeleteOutboxMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetExhaustedOutboxMessages provides a mock function with given fields: ctx, maxAttempts
+func (_m *MockOutboxRepository) GetExhaustedOutboxMessages(ctx context.Context, maxAttempts int) ([]model.OutboxMessage, error) {
+	ret := _m.Called(ctx, maxAttempts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetExhaustedOutboxMessages")
+	}
+
+	var r0 []model.OutboxMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) ([]model.OutboxMessage, error)); ok {
+		return rf(ctx, maxAttempts)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int) []model.OutboxMessage); ok {
+		r0 = rf(ctx, maxAttempts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.OutboxMessage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+		r1 = rf(ctx, maxAttempts)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockOutboxRepository_GetExhaustedOutboxMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetExhaustedOutboxMessages'
+type MockOutboxRepository_GetExhaustedOutboxMessages_Call struct {
+	*mock.Call
+}
+
+// GetExhaustedOutboxMessages is a helper method to define mock.On call
+//   - ctx context.Context
+//   - maxAttempts int
+func (_e *MockOutboxRepository_Expecter) GetExhaustedOutboxMessages(ctx interface{}, maxAttempts interface{}) *MockOutboxRepository_GetExhaustedOutboxMessages_Call {
+	return &MockOutboxRepository_GetExhaustedOutboxMessages_Call{Call: _e.mock.On("GetExhaustedOutboxMessages", ctx, maxAttempts)}
+}
+
+func (_c *MockOutboxRepository_GetExhaustedOutboxMessages_Call) Run(run func(ctx context.Context, maxAttempts int)) *MockOutboxRepository_GetExhaustedOutboxMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MockOutboxRepository_GetExhaustedOutboxMessages_Call) Return(_a0 []model.OutboxMessage, _a1 error) *MockOutboxRepository_GetExhaustedOutboxMessages_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockOutboxRepository_GetExhaustedOutboxMessages_Call) RunAndReturn(run func(context.Context, int) ([]model.OutboxMessage, error)) *MockOutboxRepository_GetExhaustedOutboxMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }

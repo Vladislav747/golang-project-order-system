@@ -14,6 +14,15 @@ const (
 	OrderActionCreated orderAction = "created"
 	OrderActionUpdated orderAction = "updated"
 	OrderActionDeleted orderAction = "deleted"
+
+	HeaderOriginalTopic     = "x-original-topic"
+	HeaderOriginalPartition = "x-original-partition"
+	HeaderOriginalOffset    = "x-original-offset"
+	HeaderError             = "x-error"
+	HeaderErrorClass        = "x-error-class"
+	HeaderAttempts          = "x-attempts"
+	HeaderFirstErrorAt      = "x-first-error-at"
+	HeaderOriginalKey       = "x-original-key"
 )
 
 type OrderCommandMessage struct {

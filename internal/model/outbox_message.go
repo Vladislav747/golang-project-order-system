@@ -32,6 +32,8 @@ type OutboxMessage struct {
 	Topic         TopicOutbox     `json:"topic"`
 	CreatedAt     time.Time       `json:"created_at"`
 	PublishedAt   *time.Time      `json:"published_at,omitempty"`
-	Attempts      int             `json:"attempts"`
-	LastError     *string         `json:"last_error,omitempty"`
+	// это время, раньше которого relay не должен снова пытаться опубликовать эту строку outbox в Kafka. Поле живой очереди, не карантина.
+	NextRetryAt *time.Time `json:"next_retry_at,omitempty"`
+	Attempts    int        `json:"attempts"`
+	LastError   *string    `json:"last_error,omitempty"`
 }
