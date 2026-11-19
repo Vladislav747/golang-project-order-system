@@ -27,11 +27,10 @@ Consumer: **MarkMessage только после успеха handler или ус
 
 ## Не сделано / дыры
 
-1. Phase C/D хвост: юнит `processMessage`, integration «битый JSON → DLQ» / redrive.
-2. Опционально: батч `POST /admin/dlq/retry`, тесты handler; перенос `transport/dlq` → `handler/dlq`.
-3. Integration Postgres тянет только `00001_init.sql` — нет `dead_letters` на DLQ-пути.
+1. Integration: «битый JSON → DLQ, следующий ок» / redrive (Postgres сейчас только `00001` — нужна миграция `dead_letters`).
+2. Опционально: батч `POST /admin/dlq/retry`; перенос `transport/dlq` → `handler/dlq`.
 
-Wiring consumer + admin HTTP — сделаны; `order-service` должен собираться.
+Wiring consumer + admin HTTP сделаны. Unit: `consumer_test` (processMessage), `transport/dlq/handler_test`, `service_dlq_test`.
 
 ## Ключевые файлы
 
