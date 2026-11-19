@@ -27,10 +27,11 @@ Consumer: **MarkMessage только после успеха handler или ус
 
 ## Не сделано / дыры
 
-1. Integration: «битый JSON → DLQ, следующий ок» / redrive (Postgres сейчас только `00001` — нужна миграция `dead_letters`).
+1. Integration: «битый JSON → DLQ, следующий ок» / redrive.
 2. Опционально: батч `POST /admin/dlq/retry`; перенос `transport/dlq` → `handler/dlq`.
 
-Wiring consumer + admin HTTP сделаны. Unit: `consumer_test` (processMessage), `transport/dlq/handler_test`, `service_dlq_test`.
+Wiring consumer + admin HTTP сделаны. Unit: `consumer_test`, `transport/dlq/handler_test`, `service_dlq_test`.
+Integration Postgres накатывает все `migrations/*.sql` (не только 00001).
 
 ## Ключевые файлы
 
