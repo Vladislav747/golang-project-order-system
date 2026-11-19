@@ -15,6 +15,7 @@ import (
 
 	bootstrap "github.com/Vladislav747/golang-project-order-system/internal/bootstrap"
 	"github.com/Vladislav747/golang-project-order-system/internal/config"
+	"github.com/Vladislav747/golang-project-order-system/internal/dlq"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler"
 	"github.com/Vladislav747/golang-project-order-system/internal/handler/health"
 	orderHandler "github.com/Vladislav747/golang-project-order-system/internal/handler/order"
@@ -41,7 +42,7 @@ func main() {
 		log.Panicf("failed to create producer %v", zap.Error(err))
 	}
 	svc := mustInitService(pool, producer, logger)
-	consumer, cancel, consumerWG := mustStartConsumer(cfg, svc, logger)
+	consumer, cancel, consumerWG := mustStartConsumer(cfg, svc, pool, producer, logger)
 
 	provider := config.NewProvider(cfg)
 
@@ -183,12 +184,29 @@ func mustInitService(pool *pgxpool.Pool, producer *kafka.Producer, logger *zap.L
 	return service.NewService(repositoryOrder, repositoryOrderEvent, repositoryOutbox, deadLetterRepo, pool, producer, logger)
 }
 
-func mustStartConsumer(cfg *config.Config, svc *service.Service, logger *zap.Logger) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {
+func mustStartConsumer(
+	cfg *config.Config,
+	svc *service.Service,
+	pool *pgxpool.Pool,
+	producer *kafka.Producer,
+	logger *zap.Logger,
+) (*kafka.Consumer, context.CancelFunc, *sync.WaitGroup) {
+	dlqSink := dlq.NewSink(
+		producer,
+		deadletter.NewRepository(pool, logger),
+		pool,
+		cfg.DLQ.Topic,
+		logger,
+	)
+
 	consumer, err := kafka.NewConsumer(
 		cfg.Kafka.Brokers,
 		cfg.Kafka.TopicOrders,
 		cfg.Kafka.ConsumerGroup,
 		svc,
+		dlqSink,
+		cfg.DLQ.ConsumerMaxRetries,
+		cfg.DLQ.ConsumerRetryBackoff,
 		logger,
 	)
 

@@ -27,10 +27,11 @@ Consumer: **MarkMessage только после успеха handler или ус
 
 ## Не сделано / дыры
 
-1. **Блокер:** `mustStartConsumer` — `dlq.NewSink` + `cfg.DLQ.*` + `pool`/`producer` (order-service не собирается).
-2. Phase C хвост: юнит `processMessage`, integration «битый JSON → DLQ».
-3. Phase D опционально: батч `POST /admin/dlq/retry`, тесты handler; перенос `transport/dlq` → `handler/dlq`.
-4. Integration Postgres тянет только `00001_init.sql` — нет `dead_letters` на DLQ-пути.
+1. Phase C/D хвост: юнит `processMessage`, integration «битый JSON → DLQ» / redrive.
+2. Опционально: батч `POST /admin/dlq/retry`, тесты handler; перенос `transport/dlq` → `handler/dlq`.
+3. Integration Postgres тянет только `00001_init.sql` — нет `dead_letters` на DLQ-пути.
+
+Wiring consumer + admin HTTP — сделаны; `order-service` должен собираться.
 
 ## Ключевые файлы
 
@@ -39,7 +40,8 @@ Consumer: **MarkMessage только после успеха handler или ус
 - `internal/repository/deadletter/`
 - `internal/worker/outbox.go` (+ backoff)
 - `config/*.yaml` → `dlq.topic`, `consumer_max_retries`, `consumer_retry_backoff`
-- `cmd/order-service/main.go` — wiring consumer (TODO)
+- `cmd/order-service/main.go` — consumer sink + admin DLQ handler
+- `internal/transport/dlq/handler.go` — HTTP admin (перенос в handler/dlq желателен)
 - `cmd/outbox-worker/main.go` — relay уже с deadletter repo
 
 ## Конвенции кода
